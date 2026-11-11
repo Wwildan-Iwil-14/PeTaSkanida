@@ -390,7 +390,22 @@ function AdminApp({ onLogout, adminName }) {
     }
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    fetchData()
+
+    // Berlangganan perubahan real-time dari database
+    // Otomatis refresh ketika tamu mengirim request atau admin memproses
+    const channel = supabase
+      .channel('realtime-requests')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_pending' }, () => fetchData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_acc' }, () => fetchData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_reject' }, () => fetchData())
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const pending = requests.filter(item => item.status === 'Pending')
   const accepted = requests.filter(item => item.status === 'Diterima')
