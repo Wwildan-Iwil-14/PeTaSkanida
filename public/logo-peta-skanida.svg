@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Logo PETA SKANIDA: pin peta dengan siluet tamu di dalamnya -->
-  <path d="M32 4c-12.7 0-23 10.1-23 22.6C9 43 32 60 32 60s23-17 23-33.4C55 14.1 44.7 4 32 4Z" fill="#6366f1"/>
-  <circle cx="32" cy="26" r="14" fill="#4f46e5"/>
-  <circle cx="32" cy="21.5" r="5" fill="#ffffff"/>
-  <path d="M22 34c1.8-4.4 5.6-6.8 10-6.8 4.4 0 8.2 2.4 10 6.8a14 14 0 0 1-20 0Z" fill="#ffffff"/>
-</svg>

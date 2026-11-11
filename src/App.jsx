@@ -56,7 +56,7 @@ function LoginPage({ onSelect }) {
     <div className="grid min-h-screen bg-[#f5f7fb] lg:grid-cols-2">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <img src="/logo-peta-skanida.svg" alt="Logo PETA SKANIDA" className="h-11 w-11" />
+          <img src="/logo-peta-skanida.png" alt="Logo PETA SKANIDA" className="h-11 w-13" />
           <div>
             <p className="font-bold tracking-wide">PETA SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
@@ -77,8 +77,8 @@ function LoginPage({ onSelect }) {
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img src="/logo-peta-skanida.svg" alt="Logo PETA SKANIDA" className="h-11 w-11" />
               <div>
+                <img src="/logo-peta-skanida.png" alt="Logo PETA SKANIDA" className="h-11 w-13" />
                 <p className="font-bold tracking-wide text-slate-900">PETA SKANIDA</p>
                 <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
               </div>
