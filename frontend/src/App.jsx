@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from './lib/supabaseClient'
+import { api } from './lib/api'
+import { subscribeToRequests } from './lib/realtime'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
   Search, Bell, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
@@ -137,13 +138,8 @@ function AdminLoginPage({ onSuccess, onBack }) {
     setError('')
     setSubmitting(true)
     try {
-      const { data, error: rpcError } = await supabase.rpc('verify_admin', {
-        p_username: username.trim(),
-        p_password: password.trim(),
-      })
-      if (rpcError) throw rpcError
-      if (!data) { setError('Nama akun atau password salah.'); return }
-      onSuccess(data)
+      const result = await api.login(username.trim(), password.trim())
+      onSuccess(result.admin.nama, result.token)
     } catch (err) {
       setError('Gagal masuk: ' + (err.message || 'Terjadi kesalahan'))
     } finally {
@@ -261,7 +257,7 @@ function GuestFormPage({ onBack, onSubmit }) {
     setError('')
     setSubmitting(true)
     try {
-      const { error: insertError } = await supabase.from('req_pending').insert({
+      await api.createRequest({
         nama: form.name.trim(),
         email: form.email.trim(),
         no_hp: form.phone.trim(),
@@ -271,7 +267,6 @@ function GuestFormPage({ onBack, onSubmit }) {
         waktu: form.time,
         jumlah: parseInt(form.people) || 1,
       })
-      if (insertError) throw insertError
       onSubmit(form)
     } catch (err) {
       setError('Gagal mengirim permintaan: ' + (err.message || 'Terjadi kesalahan. Silakan coba lagi.'))
@@ -353,7 +348,7 @@ function GuestFormPage({ onBack, onSubmit }) {
   )
 }
 
-function AdminApp({ onLogout, adminName }) {
+function AdminApp({ onLogout, adminName, token }) {
   const [active, setActive] = useState('dashboard')
   const [requests, setRequests] = useState([])
   const [query, setQuery] = useState('')
@@ -363,26 +358,13 @@ function AdminApp({ onLogout, adminName }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Ambil semua data dari Supabase
+  // Ambil semua data request dari backend
   async function fetchData() {
     setLoading(true)
     setError(null)
     try {
-      const [{ data: pending, error: e1 }, { data: acc, error: e2 }, { data: rej, error: e3 }] = await Promise.all([
-        supabase.from('req_pending').select('*').order('id', { ascending: false }),
-        supabase.from('req_acc').select('id'),
-        supabase.from('req_reject').select('id'),
-      ])
-      if (e1 || e2 || e3) throw e1 || e2 || e3
-
-      const accIds = new Set((acc || []).map(r => r.id))
-      const rejIds = new Set((rej || []).map(r => r.id))
-
-      const mapped = (pending || []).map(r => mapRecord(r,
-        accIds.has(r.id) ? 'Diterima' : rejIds.has(r.id) ? 'Ditolak' : 'Pending'
-      ))
-
-      setRequests(mapped)
+      const { requests: rows } = await api.listRequests(token)
+      setRequests((rows || []).map(row => mapRecord(row, row.status)))
     } catch (err) {
       setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
     } finally {
@@ -393,19 +375,12 @@ function AdminApp({ onLogout, adminName }) {
   useEffect(() => {
     fetchData()
 
-    // Berlangganan perubahan real-time dari database
-    // Otomatis refresh ketika tamu mengirim request atau admin memproses
-    const channel = supabase
-      .channel('realtime-requests')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_pending' }, () => fetchData())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_acc' }, () => fetchData())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_reject' }, () => fetchData())
-      .subscribe()
+    // Berlangganan perubahan real-time dari database.
+    // Otomatis refresh ketika tamu mengirim request atau admin memproses.
+    const unsubscribe = subscribeToRequests(() => fetchData())
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
+    return unsubscribe
+  }, [token])
 
   const pending = requests.filter(item => item.status === 'Pending')
   const accepted = requests.filter(item => item.status === 'Diterima')
@@ -424,28 +399,10 @@ function AdminApp({ onLogout, adminName }) {
     if (!target) return
 
     try {
-      const record = {
-        id: target.dbId,
-        nama: target.name,
-        email: target.email,
-        no_hp: target.phone,
-        tujuan: target.tujuan,
-        keperluan: target.purpose,
-        tanggal: target.date,
-        waktu: target.time,
-        jumlah: target.people,
-      }
-
       if (status === 'Diterima') {
-        const { error: accErr } = await supabase.from('req_acc').insert(record)
-        if (accErr && accErr.code !== '23505') throw accErr // 23505 = duplicate, ignore
-        const { error: histErr } = await supabase.from('riwayat').insert(record)
-        if (histErr && histErr.code !== '23505') throw histErr
+        await api.approveRequest(target.dbId, token)
       } else {
-        const { error: rejErr } = await supabase.from('req_reject').insert(record)
-        if (rejErr && rejErr.code !== '23505') throw rejErr
-        const { error: histErr } = await supabase.from('riwayat').insert(record)
-        if (histErr && histErr.code !== '23505') throw histErr
+        await api.rejectRequest(target.dbId, token)
       }
 
       setNotice(`Request ${target.id} berhasil ${status === 'Diterima' ? 'disetujui' : 'ditolak'}.`)
@@ -667,17 +624,73 @@ function AdminApp({ onLogout, adminName }) {
   )
 }
 
+const TOKEN_KEY = 'peta-skanida.admin.token'
+
 function App() {
   const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu'
   const [adminName, setAdminName] = useState('')
+  const [token, setToken] = useState('')
+  const [restoring, setRestoring] = useState(true)
+
+  // Pulihkan sesi admin dari token yang tersimpan di browser
+  useEffect(() => {
+    const savedToken = window.localStorage.getItem(TOKEN_KEY)
+    if (!savedToken) {
+      setRestoring(false)
+      return
+    }
+
+    let active = true
+    api
+      .me(savedToken)
+      .then(({ admin }) => {
+        if (!active) return
+        setToken(savedToken)
+        setAdminName(admin.nama)
+        setRole('admin')
+      })
+      .catch(() => {
+        window.localStorage.removeItem(TOKEN_KEY)
+      })
+      .finally(() => {
+        if (active) setRestoring(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  function handleLoginSuccess(nama, newToken) {
+    window.localStorage.setItem(TOKEN_KEY, newToken)
+    setToken(newToken)
+    setAdminName(nama)
+    setRole('admin')
+  }
+
+  function handleLogout() {
+    window.localStorage.removeItem(TOKEN_KEY)
+    setToken('')
+    setAdminName('')
+    setRole(null)
+  }
+
+  if (restoring) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f5f7fb] text-slate-400">
+        <Loader2 size={32} className="animate-spin text-indigo-400" />
+        <p className="mt-4 text-sm">Memuat sesi...</p>
+      </div>
+    )
+  }
 
   if (role === null) return <LoginPage onSelect={setRole} />
-  if (role === 'admin-login') return <AdminLoginPage onSuccess={(name) => { setAdminName(name); setRole('admin') }} onBack={() => setRole(null)} />
+  if (role === 'admin-login') return <AdminLoginPage onSuccess={handleLoginSuccess} onBack={() => setRole(null)} />
   if (role === 'tamu') return <GuestFormPage onBack={() => setRole(null)} onSubmit={form => {
     window.alert(`Terima kasih, ${form.name}. Permintaan kunjungan Anda telah dikirim dan akan diverifikasi oleh admin.`)
     setRole(null)
   }} />
-  return <AdminApp adminName={adminName} onLogout={() => { setRole(null); setAdminName('') }} />
+  return <AdminApp adminName={adminName} token={token} onLogout={handleLogout} />
 }
 
 export default App

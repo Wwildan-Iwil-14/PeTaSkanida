@@ -1,15 +1,16 @@
 ﻿import { createClient } from '@supabase/supabase-js'
 
+/**
+ * Klien Supabase publik (anon key) - hanya dipakai untuk suscripción real-time
+ * di dashboard admin. Akses data & operasi tulis melewati backend REST.
+ */
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Konfigurasi Supabase belum lengkap. Buat file .env.local di folder frontend/ dengan:\n' +
-    'VITE_SUPABASE_URL=https://xxxxx.supabase.co\n' +
-    'VITE_SUPABASE_ANON_KEY=your_anon_key_here\n' +
-    'Lihat .env.example untuk template.'
+export const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
+
+if (!supabase) {
+  console.warn(
+    'Real-time nonaktif: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY belum diisi di frontend/.env.local.',
   )
 }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)

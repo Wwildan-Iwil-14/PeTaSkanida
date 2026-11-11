@@ -91,18 +91,31 @@ ALTER TABLE public.req_reject ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.riwayat ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
 
--- Policy untuk tabel request: izinkan semua operasi untuk anon & authenticated
-CREATE POLICY "enable_all_req_pending" ON public.req_pending
-  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "enable_all_req_acc" ON public.req_acc
-  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "enable_all_req_reject" ON public.req_reject
-  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "enable_all_riwayat" ON public.riwayat
-  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+-- Policy tabel request: anon & authenticated hanya boleh MEMBACA.
+-- Ini dipakai frontend untuk real-time, sedangkan operasi tulis
+-- (insert request, approve/reject) dilakukan backend memakai service role key.
+DROP POLICY IF EXISTS "enable_all_req_pending" ON public.req_pending;
+DROP POLICY IF EXISTS "enable_all_req_acc" ON public.req_acc;
+DROP POLICY IF EXISTS "enable_all_req_reject" ON public.req_reject;
+DROP POLICY IF EXISTS "enable_all_riwayat" ON public.riwayat;
+
+DROP POLICY IF EXISTS "select_req_pending" ON public.req_pending;
+DROP POLICY IF EXISTS "select_req_acc" ON public.req_acc;
+DROP POLICY IF EXISTS "select_req_reject" ON public.req_reject;
+DROP POLICY IF EXISTS "select_riwayat" ON public.riwayat;
+
+CREATE POLICY "select_req_pending" ON public.req_pending
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "select_req_acc" ON public.req_acc
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "select_req_reject" ON public.req_reject
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "select_riwayat" ON public.riwayat
+  FOR SELECT TO anon, authenticated USING (true);
 
 -- Tabel admins: TIDAK ada policy = semua akses langsung diblokir
 -- Hanya bisa diakses melalui function verify_admin (SECURITY DEFINER)
+-- yang dipanggil oleh backend.
 
 -- ============================================
 -- FUNCTIONS
