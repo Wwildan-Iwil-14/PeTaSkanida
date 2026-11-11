@@ -1,19 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from './lib/supabaseClient'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
   Search, Bell, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
   ArrowUpRight, ChevronRight, MapPin, UserRound, Filter, ShieldCheck,
-  CalendarCheck, MoreHorizontal, Eye, EyeOff, MessageCircle
+  CalendarCheck, MoreHorizontal, Eye, EyeOff, MessageCircle,
+  Loader2, AlertCircle
 } from 'lucide-react'
-
-const initialRequests = [
-  { id: 'REQ-008', name: 'Nadia Putri', purpose: 'Bertemu keluarga', date: '2026-11-11', time: '10:00', phone: '0812-3456-7890', people: 2, status: 'Pending' },
-  { id: 'REQ-007', name: 'Rizky Pratama', purpose: 'Kunjungan teman', date: '2026-11-11', time: '13:30', phone: '0813-2222-4567', people: 1, status: 'Pending' },
-  { id: 'REQ-006', name: 'Aulia Rahma', purpose: 'Mengantar barang', date: '2026-11-12', time: '09:00', phone: '0821-9876-5432', people: 2, status: 'Pending' },
-  { id: 'REQ-005', name: 'Dimas Saputra', purpose: 'Kunjungan keluarga', date: '2026-11-10', time: '14:00', phone: '0857-1111-2233', people: 3, status: 'Diterima' },
-  { id: 'REQ-004', name: 'Siti Amelia', purpose: 'Keperluan administrasi', date: '2026-11-09', time: '11:00', phone: '0819-4444-5555', people: 1, status: 'Ditolak' },
-  { id: 'REQ-003', name: 'Fajar Ramadhan', purpose: 'Bertemu keluarga', date: '2026-11-08', time: '15:30', phone: '0878-3333-1212', people: 2, status: 'Diterima' },
-]
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,9 +15,29 @@ const navItems = [
   { id: 'riwayat', label: 'Riwayat Kunjungan', icon: History },
 ]
 
-const formatDate = (value) => new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', {
-  day: '2-digit', month: 'short', year: 'numeric'
-})
+const formatDate = (value) => {
+  if (!value) return '-'
+  return new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  })
+}
+
+// Mapping dari row database ke format yang dipakai UI
+function mapRecord(r, status) {
+  return {
+    dbId: r.id,
+    id: `REQ-${String(r.id).padStart(3, '0')}`,
+    name: r.nama || '-',
+    email: r.email || '',
+    purpose: r.keperluan || '-',
+    tujuan: r.tujuan || '-',
+    date: r.tanggal || '',
+    time: r.waktu || '',
+    phone: r.no_hp || '-',
+    people: r.jumlah || 1,
+    status,
+  }
+}
 
 function Status({ value }) {
   const styles = {
@@ -120,7 +133,6 @@ function AdminLoginPage({ onSuccess, onBack }) {
     e.preventDefault()
     if (!username.trim()) { setError('Nama akun wajib diisi.'); return }
     if (!password.trim()) { setError('Password wajib diisi.'); return }
-    // SEMENTARA FRONTEND SAJA: verifikasi akun akan dihubungkan dengan backend/database oleh tim lain.
     setError('')
     onSuccess(username.trim())
   }
@@ -201,19 +213,23 @@ const opsiTujuan = ['Pilih tujuan...', 'Kepala SKANIDA', 'Staf Administrasi', 'D
 const opsiKeperluan = ['Pilih keperluan...', 'Bertemu keluarga', 'Kunjungan dinas', 'Keperluan administrasi', 'Lainnya...']
 
 function GuestFormPage({ onBack, onSubmit }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', tujuan: '', keperluan: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', date: '', time: '', people: '1', tujuan: '', keperluan: '' })
   const [customOpen, setCustomOpen] = useState({})
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const fields = [
     { key: 'name', label: 'Nama / Instansi', type: 'text', placeholder: 'Contoh: Nadia Putri / Dinas Kominfo' },
     { key: 'email', label: 'Alamat Email', type: 'email', placeholder: 'nama@email.com' },
     { key: 'phone', label: 'Nomor HP', type: 'tel', placeholder: '0812-3456-7890' },
+    { key: 'date', label: 'Tanggal Kunjungan', type: 'date', placeholder: '' },
+    { key: 'time', label: 'Waktu Kunjungan', type: 'time', placeholder: '' },
+    { key: 'people', label: 'Jumlah Pengunjung', type: 'number', placeholder: '1' },
   ]
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.tujuan || !form.keperluan) {
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.date || !form.time || !form.tujuan || !form.keperluan) {
       setError('Semua kolom wajib diisi. Pada menu tujuan dan keperluan, pilih salah satu opsi (bukan "Pilih...").')
       return
     }
@@ -226,7 +242,25 @@ function GuestFormPage({ onBack, onSubmit }) {
       return
     }
     setError('')
-    onSubmit(form)
+    setSubmitting(true)
+    try {
+      const { error: insertError } = await supabase.from('req_pending').insert({
+        nama: form.name.trim(),
+        email: form.email.trim(),
+        no_hp: form.phone.trim(),
+        tujuan: form.tujuan,
+        keperluan: form.keperluan,
+        tanggal: form.date,
+        waktu: form.time,
+        jumlah: parseInt(form.people) || 1,
+      })
+      if (insertError) throw insertError
+      onSubmit(form)
+    } catch (err) {
+      setError('Gagal mengirim permintaan: ' + (err.message || 'Terjadi kesalahan. Silakan coba lagi.'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleSelectChange(key, value) {
@@ -262,6 +296,7 @@ function GuestFormPage({ onBack, onSubmit }) {
                   value={form[key]}
                   onChange={e => setForm({ ...form, [key]: e.target.value })}
                   placeholder={placeholder}
+                  min={type === 'number' ? 1 : undefined}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
                 />
               </div>
@@ -290,7 +325,10 @@ function GuestFormPage({ onBack, onSubmit }) {
               </div>
             ))}
             {error && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">{error}</p>}
-            <button type="submit" className="w-full rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600">Kirim Permintaan</button>
+            <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600 disabled:opacity-60">
+              {submitting && <Loader2 size={16} className="animate-spin" />}
+              {submitting ? 'Mengirim...' : 'Kirim Permintaan'}
+            </button>
           </form>
         </div>
       </div>
@@ -300,16 +338,48 @@ function GuestFormPage({ onBack, onSubmit }) {
 
 function AdminApp({ onLogout }) {
   const [active, setActive] = useState('dashboard')
-  const [requests, setRequests] = useState(initialRequests)
+  const [requests, setRequests] = useState([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Semua')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Ambil semua data dari Supabase
+  async function fetchData() {
+    setLoading(true)
+    setError(null)
+    try {
+      const [{ data: pending, error: e1 }, { data: acc, error: e2 }, { data: rej, error: e3 }] = await Promise.all([
+        supabase.from('req_pending').select('*').order('id', { ascending: false }),
+        supabase.from('req_acc').select('id'),
+        supabase.from('req_reject').select('id'),
+      ])
+      if (e1 || e2 || e3) throw e1 || e2 || e3
+
+      const accIds = new Set((acc || []).map(r => r.id))
+      const rejIds = new Set((rej || []).map(r => r.id))
+
+      const mapped = (pending || []).map(r => mapRecord(r,
+        accIds.has(r.id) ? 'Diterima' : rejIds.has(r.id) ? 'Ditolak' : 'Pending'
+      ))
+
+      setRequests(mapped)
+    } catch (err) {
+      setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchData() }, [])
 
   const pending = requests.filter(item => item.status === 'Pending')
   const accepted = requests.filter(item => item.status === 'Diterima')
   const rejected = requests.filter(item => item.status === 'Ditolak')
-  const upcoming = requests.filter(item => item.status === 'Diterima' && item.date >= '2026-11-10')
+  const today = new Date().toISOString().split('T')[0]
+  const upcoming = requests.filter(item => item.status === 'Diterima' && item.date >= today)
 
   const visibleRequests = useMemo(() => requests.filter(item => {
     const matchesQuery = `${item.name} ${item.id} ${item.purpose}`.toLowerCase().includes(query.toLowerCase())
@@ -317,11 +387,42 @@ function AdminApp({ onLogout }) {
     return matchesQuery && matchesFilter
   }), [requests, query, filter])
 
-  function updateStatus(id, status) {
-    setRequests(current => current.map(item => item.id === id ? { ...item, status } : item))
+  async function updateStatus(id, status) {
     const target = requests.find(item => item.id === id)
-    setNotice(`Request ${target?.id} berhasil ${status === 'Diterima' ? 'disetujui' : 'ditolak'}.`)
-    window.setTimeout(() => setNotice(''), 3000)
+    if (!target) return
+
+    try {
+      const record = {
+        id: target.dbId,
+        nama: target.name,
+        email: target.email,
+        no_hp: target.phone,
+        tujuan: target.tujuan,
+        keperluan: target.purpose,
+        tanggal: target.date,
+        waktu: target.time,
+        jumlah: target.people,
+      }
+
+      if (status === 'Diterima') {
+        const { error: accErr } = await supabase.from('req_acc').insert(record)
+        if (accErr && accErr.code !== '23505') throw accErr // 23505 = duplicate, ignore
+        const { error: histErr } = await supabase.from('riwayat').insert(record)
+        if (histErr && histErr.code !== '23505') throw histErr
+      } else {
+        const { error: rejErr } = await supabase.from('req_reject').insert(record)
+        if (rejErr && rejErr.code !== '23505') throw rejErr
+        const { error: histErr } = await supabase.from('riwayat').insert(record)
+        if (histErr && histErr.code !== '23505') throw histErr
+      }
+
+      setNotice(`Request ${target.id} berhasil ${status === 'Diterima' ? 'disetujui' : 'ditolak'}.`)
+      window.setTimeout(() => setNotice(''), 3000)
+      fetchData()
+    } catch (err) {
+      setNotice('Gagal memperbarui status: ' + (err.message || 'Terjadi kesalahan'))
+      window.setTimeout(() => setNotice(''), 4000)
+    }
   }
 
   function goTo(id) {
@@ -360,7 +461,7 @@ function AdminApp({ onLogout }) {
                 <td className="px-6 py-4 text-slate-600">{item.purpose}</td>
                 <td className="px-6 py-4">
                   <div className="font-medium text-slate-700">{formatDate(item.date)}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.time} WIB</div>
+                  <div className="mt-1 text-xs text-slate-400">{item.time ? `${item.time} WIB` : '-'}</div>
                 </td>
                 <td className="px-6 py-4 text-slate-600">{item.people} orang</td>
                 <td className="px-6 py-4"><Status value={item.status} /></td>
@@ -431,7 +532,7 @@ function AdminApp({ onLogout }) {
           <div className="divide-y divide-slate-100">
             {upcoming.length ? upcoming.map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
               <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600"><CalendarDays size={19} /></div>
-              <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400"><Clock3 size={13} /> {formatDate(item.date)} · {item.time}</p></div>
+              <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
             </div>) : <p className="px-5 py-10 text-center text-sm text-slate-400">Belum ada jadwal mendatang.</p>}
           </div>
         </Panel>
@@ -506,10 +607,26 @@ function AdminApp({ onLogout }) {
         </header>
 
         <div className="mx-auto max-w-[1600px] p-4 sm:p-8">
-          {active === 'dashboard' && <Dashboard />}
-          {active === 'tamu' && <ListingPage type="tamu" />}
-          {active === 'request' && <ListingPage type="request" />}
-          {active === 'riwayat' && <HistoryPage />}
+          {error && (
+            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+              <AlertCircle size={20} className="shrink-0" />
+              <span>{error}</span>
+              <button onClick={fetchData} className="ml-auto shrink-0 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200">Coba lagi</button>
+            </div>
+          )}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+              <Loader2 size={32} className="animate-spin text-indigo-400" />
+              <p className="mt-4 text-sm">Memuat data...</p>
+            </div>
+          ) : (
+            <>
+              {active === 'dashboard' && <Dashboard />}
+              {active === 'tamu' && <ListingPage type="tamu" />}
+              {active === 'request' && <ListingPage type="request" />}
+              {active === 'riwayat' && <HistoryPage />}
+            </>
+          )}
           <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PETA SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
         </div>
       </main>
