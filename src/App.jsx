@@ -454,16 +454,16 @@ function AdminApp({ onLogout }) {
 
   function HistoryPage() {
     const items = visibleRequests
-      .filter(item => item.status !== 'Pending')
+      .filter(item => item.status === 'Diterima')
       .slice()
       .sort((a, b) => {
         const toValue = ({ date, time }) => new Date(`${date}T${time || '00:00'}`).getTime()
         return toValue(b) - toValue(a)
       })
     return <>
-      <div className="mb-6"><h2 className="text-2xl font-bold text-slate-900">Riwayat Kunjungan</h2><p className="mt-2 text-sm text-slate-500">Semua permintaan yang sudah diterima atau ditolak.</p></div>
+      <div className="mb-6"><h2 className="text-2xl font-bold text-slate-900">Riwayat Kunjungan</h2><p className="mt-2 text-sm text-slate-500">Arsip kunjungan tamu yang telah disetujui.</p></div>
       <div className="mb-5"><SearchFilter /></div>
-      <Panel title="Riwayat request" subtitle={`${items.length} data telah diproses`}><RequestTable items={items} /></Panel>
+      <Panel title="Riwayat kunjungan" subtitle={`${items.length} kunjungan diterima`}><RequestTable items={items} /></Panel>
     </>
   }
 
