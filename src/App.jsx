@@ -201,7 +201,7 @@ const opsiTujuan = ['Pilih tujuan...', 'Kepala SKANIDA', 'Staf Administrasi', 'D
 const opsiKeperluan = ['Pilih keperluan...', 'Bertemu keluarga', 'Kunjungan dinas', 'Keperluan administrasi', 'Lainnya...']
 
 function GuestFormPage({ onBack, onSubmit }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', tujuan: '', keperluan: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', date: '', tujuan: '', keperluan: '' })
   const [customOpen, setCustomOpen] = useState({})
   const [error, setError] = useState('')
 
@@ -209,11 +209,12 @@ function GuestFormPage({ onBack, onSubmit }) {
     { key: 'name', label: 'Nama / Instansi', type: 'text', placeholder: 'Contoh: Nadia Putri / Dinas Kominfo' },
     { key: 'email', label: 'Alamat Email', type: 'email', placeholder: 'nama@email.com' },
     { key: 'phone', label: 'Nomor HP', type: 'tel', placeholder: '0812-3456-7890' },
+    { key: 'date', label: 'Tanggal Kunjungan', type: 'date', placeholder: '' },
   ]
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.tujuan || !form.keperluan) {
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.date || !form.tujuan || !form.keperluan) {
       setError('Semua kolom wajib diisi. Pada menu tujuan dan keperluan, pilih salah satu opsi (bukan "Pilih...").')
       return
     }
