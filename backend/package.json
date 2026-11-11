@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "REST API PETA SKANIDA - perantara antara frontend dan database Supabase",
+  "description": "REST API PeTa SKANIDA - perantara antara frontend dan database Supabase",
   "main": "src/server.js",
   "scripts": {
     "dev": "node --watch src/server.js",

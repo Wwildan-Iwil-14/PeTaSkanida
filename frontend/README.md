@@ -1,4 +1,4 @@
-# PETA SKANIDA - Frontend
+# PeTa SKANIDA - Frontend
 
 Aplikasi React (Vite) untuk mengelola daftar permintaan kunjungan tamu SKANIDA.
 

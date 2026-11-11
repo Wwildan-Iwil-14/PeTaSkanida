@@ -1,4 +1,4 @@
-# PETA SKANIDA - Backend
+# PeTa SKANIDA - Backend
 
 REST API (Express) yang menjadi perantara antara frontend React dan database Supabase.
 

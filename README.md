@@ -1,4 +1,4 @@
-﻿# PETA SKANIDA - Sistem Pengelolaan Tamu Kunjungan
+﻿# PeTa SKANIDA - Sistem Pengelolaan Tamu Kunjungan
 
 Aplikasi web untuk mengelola daftar permintaan kunjungan tamu SKANIDA.
 Dibangun dengan React 18 + Vite 6 + Tailwind CSS 3 + Express + Supabase.
@@ -121,4 +121,4 @@ Ganti password setelah login pertama. Lihat [database/README.md](database/README
 - Setelah mengetatkan RLS, backend wajib memakai service role key
 
 ## Lisensi
-PETA SKANIDA - SMKN 2 Magelang
+PeTa SKANIDA - SMKN 2 Magelang

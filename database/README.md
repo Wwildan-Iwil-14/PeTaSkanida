@@ -1,4 +1,4 @@
-﻿# PETA SKANIDA - Database
+﻿# PeTa SKANIDA - Database
 
 Folder ini berisi skema, seed, dan migration database untuk Supabase.
 Folder ini adalah **sumber kebenaran** untuk semua perubahan schema.

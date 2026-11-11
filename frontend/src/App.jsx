@@ -70,9 +70,9 @@ function LoginPage({ onSelect }) {
     <div className="grid min-h-screen bg-[#f5f7fb] lg:grid-cols-2">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <img src="/logo-peta-skanida.png" alt="Logo PETA SKANIDA" className="h-11 w-11" />
+          <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
           <div>
-            <p className="font-bold tracking-wide">PETA SKANIDA</p>
+            <p className="font-bold tracking-wide">PeTa SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
           </div>
         </div>
@@ -85,15 +85,15 @@ function LoginPage({ onSelect }) {
           </p>
           <div className="mt-8 flex items-center gap-2 text-xs text-slate-400"><CalendarCheck size={15} /> Sistem pengelolaan kunjungan</div>
         </div>
-        <p className="text-xs text-slate-500">© 2026 PETA SKANIDA · Admin Panel</p>
+        <p className="text-xs text-slate-500">© 2026 PeTa SKANIDA · Admin Panel</p>
       </div>
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img src="/logo-peta-skanida.png" alt="Logo PETA SKANIDA" className="h-11 w-11" />
+              <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
               <div>
-                <p className="font-bold tracking-wide text-slate-900">PETA SKANIDA</p>
+                <p className="font-bold tracking-wide text-slate-900">PeTa SKANIDA</p>
                 <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
               </div>
             </div>
@@ -151,9 +151,9 @@ function AdminLoginPage({ onSuccess, onBack }) {
     <div className="grid min-h-screen bg-[#f5f7fb] lg:grid-cols-2">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <img src="/logo-peta-skanida.png" alt="Logo PETA SKANIDA" className="h-11 w-11" />
+          <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
           <div>
-            <p className="font-bold tracking-wide">PETA SKANIDA</p>
+            <p className="font-bold tracking-wide">PeTa SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">ADMIN PANEL</p>
           </div>
         </div>
@@ -164,7 +164,7 @@ function AdminLoginPage({ onSuccess, onBack }) {
           </p>
           <div className="mt-8 flex items-center gap-2 text-xs text-slate-400"><CalendarCheck size={15} /> Sistem pengelolaan kunjungan</div>
         </div>
-        <p className="text-xs text-slate-500">© 2026 PETA SKANIDA · Admin Panel</p>
+        <p className="text-xs text-slate-500">© 2026 PeTa SKANIDA · Admin Panel</p>
       </div>
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md">
@@ -562,8 +562,8 @@ function AdminApp({ onLogout, adminName, token }) {
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101827] text-white transition-transform duration-300 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-[84px] items-center justify-between border-b border-white/10 px-6">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-500 font-black text-white">PS</div>
-            <div><p className="font-bold tracking-wide">PETA SKANIDA</p><p className="mt-0.5 text-[10px] tracking-[.2em] text-slate-400">ADMIN PANEL</p></div>
+            <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-10 w-10 shrink-0 rounded-xl bg-white/95 object-contain p-0.5" />
+            <div><p className="font-bold tracking-wide">PeTa SKANIDA</p><p className="mt-0.5 text-[10px] tracking-[.2em] text-slate-400">ADMIN PANEL</p></div>
           </div>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 lg:hidden"><X size={19} /></button>
         </div>
@@ -587,7 +587,7 @@ function AdminApp({ onLogout, adminName, token }) {
         <header className="sticky top-0 z-30 flex h-[84px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-8">
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2 text-slate-600 lg:hidden"><Menu size={20} /></button>
-            <div><p className="text-xs text-slate-400">PETA SKANIDA / Admin</p><h1 className="mt-1 font-bold text-slate-800">{pageTitle}</h1></div>
+            <div><p className="text-xs text-slate-400">PeTa SKANIDA / Admin</p><h1 className="mt-1 font-bold text-slate-800">{pageTitle}</h1></div>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400">Admin</p></div>
@@ -616,7 +616,7 @@ function AdminApp({ onLogout, adminName, token }) {
               {active === 'riwayat' && <HistoryPage />}
             </>
           )}
-          <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PETA SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
+          <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
         </div>
       </main>
       {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-[calc(100%-40px)] items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl"><CheckCircle2 size={17} className="text-emerald-400" />{notice}</div>}

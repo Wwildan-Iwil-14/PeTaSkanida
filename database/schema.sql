@@ -1,5 +1,5 @@
 ﻿-- ============================================
--- PETA SKANIDA - Complete Database Schema
+-- PeTa SKANIDA - Complete Database Schema
 -- ============================================
 -- Run this file in Supabase SQL Editor to set up
 -- the database from scratch.

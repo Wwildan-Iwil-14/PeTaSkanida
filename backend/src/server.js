@@ -11,7 +11,7 @@ try {
 const app = createApp()
 
 app.listen(config.port, () => {
-  console.log(`[backend] PETA SKANIDA API berjalan di http://localhost:${config.port}/api`)
+  console.log(`[backend] PeTa SKANIDA API berjalan di http://localhost:${config.port}/api`)
   console.log(
     config.usingServiceRole
       ? '[backend] MengACCESS database dengan service role key (akses penuh).'
