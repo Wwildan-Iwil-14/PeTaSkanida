@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from './lib/supabaseClient'
+import { api } from './lib/api'
+import { subscribeToRequests } from './lib/realtime'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
   Search, Bell, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
@@ -69,9 +70,9 @@ function LoginPage({ onSelect }) {
     <div className="grid min-h-screen bg-[#f5f7fb] lg:grid-cols-2">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <img src="/logo-peta-skanida.svg" alt="Logo PETA SKANIDA" className="h-11 w-11" />
+          <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
           <div>
-            <p className="font-bold tracking-wide">PETA SKANIDA</p>
+            <p className="font-bold tracking-wide">PeTa SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
           </div>
         </div>
@@ -84,15 +85,15 @@ function LoginPage({ onSelect }) {
           </p>
           <div className="mt-8 flex items-center gap-2 text-xs text-slate-400"><CalendarCheck size={15} /> Sistem pengelolaan kunjungan</div>
         </div>
-        <p className="text-xs text-slate-500">© 2026 PETA SKANIDA · Admin Panel</p>
+        <p className="text-xs text-slate-500">© 2026 PeTa SKANIDA · Admin Panel</p>
       </div>
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img src="/logo-peta-skanida.svg" alt="Logo PETA SKANIDA" className="h-11 w-11" />
+              <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
               <div>
-                <p className="font-bold tracking-wide text-slate-900">PETA SKANIDA</p>
+                <p className="font-bold tracking-wide text-slate-900">PeTa SKANIDA</p>
                 <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
               </div>
             </div>
@@ -100,7 +101,7 @@ function LoginPage({ onSelect }) {
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Selamat Datang 👋</h2>
           <p className="mt-2 text-sm text-slate-500">Pilih jenis akses untuk melanjutkan ke aplikasi.</p>
           <div className="mt-8 space-y-4">
-            <button onClick={() => onSelect('admin')} className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md">
+            <button onClick={() => onSelect('admin-login')} className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md">
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-500 group-hover:text-white"><ShieldCheck size={22} /></div>
               <div className="min-w-0">
                 <p className="font-bold text-slate-800">Admin / Pengelola</p>
@@ -128,22 +129,31 @@ function AdminLoginPage({ onSuccess, onBack }) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     if (!username.trim()) { setError('Nama akun wajib diisi.'); return }
     if (!password.trim()) { setError('Password wajib diisi.'); return }
     setError('')
-    onSuccess(username.trim())
+    setSubmitting(true)
+    try {
+      const result = await api.login(username.trim(), password.trim())
+      onSuccess(result.admin.nama, result.token)
+    } catch (err) {
+      setError('Gagal masuk: ' + (err.message || 'Terjadi kesalahan'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div className="grid min-h-screen bg-[#f5f7fb] lg:grid-cols-2">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <img src="/logo-peta-skanida.svg" alt="Logo PETA SKANIDA" className="h-11 w-11" />
+          <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
           <div>
-            <p className="font-bold tracking-wide">PETA SKANIDA</p>
+            <p className="font-bold tracking-wide">PeTa SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">ADMIN PANEL</p>
           </div>
         </div>
@@ -154,7 +164,7 @@ function AdminLoginPage({ onSuccess, onBack }) {
           </p>
           <div className="mt-8 flex items-center gap-2 text-xs text-slate-400"><CalendarCheck size={15} /> Sistem pengelolaan kunjungan</div>
         </div>
-        <p className="text-xs text-slate-500">© 2026 PETA SKANIDA · Admin Panel</p>
+        <p className="text-xs text-slate-500">© 2026 PeTa SKANIDA · Admin Panel</p>
       </div>
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md">
@@ -198,7 +208,10 @@ function AdminLoginPage({ onSuccess, onBack }) {
                 </div>
               </div>
               {error && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">{error}</p>}
-              <button type="submit" className="w-full rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600">Masuk</button>
+              <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600 disabled:opacity-60">
+                {submitting && <Loader2 size={16} className="animate-spin" />}
+                {submitting ? 'Memeriksa...' : 'Masuk'}
+              </button>
             </form>
           </div>
         </div>
@@ -244,7 +257,7 @@ function GuestFormPage({ onBack, onSubmit }) {
     setError('')
     setSubmitting(true)
     try {
-      const { error: insertError } = await supabase.from('req_pending').insert({
+      await api.createRequest({
         nama: form.name.trim(),
         email: form.email.trim(),
         no_hp: form.phone.trim(),
@@ -254,7 +267,6 @@ function GuestFormPage({ onBack, onSubmit }) {
         waktu: form.time,
         jumlah: parseInt(form.people) || 1,
       })
-      if (insertError) throw insertError
       onSubmit(form)
     } catch (err) {
       setError('Gagal mengirim permintaan: ' + (err.message || 'Terjadi kesalahan. Silakan coba lagi.'))
@@ -336,7 +348,7 @@ function GuestFormPage({ onBack, onSubmit }) {
   )
 }
 
-function AdminApp({ onLogout }) {
+function AdminApp({ onLogout, adminName, token }) {
   const [active, setActive] = useState('dashboard')
   const [requests, setRequests] = useState([])
   const [query, setQuery] = useState('')
@@ -346,26 +358,13 @@ function AdminApp({ onLogout }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Ambil semua data dari Supabase
+  // Ambil semua data request dari backend
   async function fetchData() {
     setLoading(true)
     setError(null)
     try {
-      const [{ data: pending, error: e1 }, { data: acc, error: e2 }, { data: rej, error: e3 }] = await Promise.all([
-        supabase.from('req_pending').select('*').order('id', { ascending: false }),
-        supabase.from('req_acc').select('id'),
-        supabase.from('req_reject').select('id'),
-      ])
-      if (e1 || e2 || e3) throw e1 || e2 || e3
-
-      const accIds = new Set((acc || []).map(r => r.id))
-      const rejIds = new Set((rej || []).map(r => r.id))
-
-      const mapped = (pending || []).map(r => mapRecord(r,
-        accIds.has(r.id) ? 'Diterima' : rejIds.has(r.id) ? 'Ditolak' : 'Pending'
-      ))
-
-      setRequests(mapped)
+      const { requests: rows } = await api.listRequests(token)
+      setRequests((rows || []).map(row => mapRecord(row, row.status)))
     } catch (err) {
       setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
     } finally {
@@ -373,7 +372,15 @@ function AdminApp({ onLogout }) {
     }
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    fetchData()
+
+    // Berlangganan perubahan real-time dari database.
+    // Otomatis refresh ketika tamu mengirim request atau admin memproses.
+    const unsubscribe = subscribeToRequests(() => fetchData())
+
+    return unsubscribe
+  }, [token])
 
   const pending = requests.filter(item => item.status === 'Pending')
   const accepted = requests.filter(item => item.status === 'Diterima')
@@ -392,28 +399,10 @@ function AdminApp({ onLogout }) {
     if (!target) return
 
     try {
-      const record = {
-        id: target.dbId,
-        nama: target.name,
-        email: target.email,
-        no_hp: target.phone,
-        tujuan: target.tujuan,
-        keperluan: target.purpose,
-        tanggal: target.date,
-        waktu: target.time,
-        jumlah: target.people,
-      }
-
       if (status === 'Diterima') {
-        const { error: accErr } = await supabase.from('req_acc').insert(record)
-        if (accErr && accErr.code !== '23505') throw accErr // 23505 = duplicate, ignore
-        const { error: histErr } = await supabase.from('riwayat').insert(record)
-        if (histErr && histErr.code !== '23505') throw histErr
+        await api.approveRequest(target.dbId, token)
       } else {
-        const { error: rejErr } = await supabase.from('req_reject').insert(record)
-        if (rejErr && rejErr.code !== '23505') throw rejErr
-        const { error: histErr } = await supabase.from('riwayat').insert(record)
-        if (histErr && histErr.code !== '23505') throw histErr
+        await api.rejectRequest(target.dbId, token)
       }
 
       setNotice(`Request ${target.id} berhasil ${status === 'Diterima' ? 'disetujui' : 'ditolak'}.`)
@@ -514,7 +503,7 @@ function AdminApp({ onLogout }) {
   function Dashboard() {
     return <>
       <div className="mb-7">
-        <p className="text-sm text-slate-500">Selamat datang kembali, Admin 👋</p>
+        <p className="text-sm text-slate-500">Selamat datang kembali, {adminName || 'Admin'} 👋</p>
         <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Ringkasan aktivitas</h2>
         <p className="mt-2 text-sm text-slate-500">Pantau permintaan dan jadwal kunjungan dalam satu tempat.</p>
       </div>
@@ -573,8 +562,8 @@ function AdminApp({ onLogout }) {
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101827] text-white transition-transform duration-300 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-[84px] items-center justify-between border-b border-white/10 px-6">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-500 font-black text-white">PS</div>
-            <div><p className="font-bold tracking-wide">PETA SKANIDA</p><p className="mt-0.5 text-[10px] tracking-[.2em] text-slate-400">ADMIN PANEL</p></div>
+            <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-10 w-10 shrink-0 rounded-xl bg-white/95 object-contain p-0.5" />
+            <div><p className="font-bold tracking-wide">PeTa SKANIDA</p><p className="mt-0.5 text-[10px] tracking-[.2em] text-slate-400">ADMIN PANEL</p></div>
           </div>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 lg:hidden"><X size={19} /></button>
         </div>
@@ -587,7 +576,7 @@ function AdminApp({ onLogout }) {
         <div className="mt-auto border-t border-white/10 p-4">
           <div className="mb-4 flex items-center gap-3 rounded-xl bg-white/5 p-3">
             <div className="grid h-9 w-9 place-items-center rounded-full bg-indigo-400/20 text-indigo-200"><UserRound size={18} /></div>
-            <div className="min-w-0"><p className="text-sm font-semibold">Administrator</p><p className="text-xs text-slate-500">Pengelola sistem</p></div>
+            <div className="min-w-0"><p className="text-sm font-semibold">{adminName || 'Administrator'}</p><p className="text-xs text-slate-500">Pengelola sistem</p></div>
             <ShieldCheck className="ml-auto text-emerald-400" size={17} />
           </div>
           <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300"><LogOut size={18} />Keluar</button>
@@ -598,10 +587,10 @@ function AdminApp({ onLogout }) {
         <header className="sticky top-0 z-30 flex h-[84px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-8">
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2 text-slate-600 lg:hidden"><Menu size={20} /></button>
-            <div><p className="text-xs text-slate-400">PETA SKANIDA / Admin</p><h1 className="mt-1 font-bold text-slate-800">{pageTitle}</h1></div>
+            <div><p className="text-xs text-slate-400">PeTa SKANIDA / Admin</p><h1 className="mt-1 font-bold text-slate-800">{pageTitle}</h1></div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700">Administrator</p><p className="text-[11px] text-slate-400">Admin</p></div>
+            <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400">Admin</p></div>
             <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-50 text-indigo-600"><UserRound size={19} /></div>
           </div>
         </header>
@@ -627,7 +616,7 @@ function AdminApp({ onLogout }) {
               {active === 'riwayat' && <HistoryPage />}
             </>
           )}
-          <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PETA SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
+          <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
         </div>
       </main>
       {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-[calc(100%-40px)] items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl"><CheckCircle2 size={17} className="text-emerald-400" />{notice}</div>}
@@ -635,16 +624,73 @@ function AdminApp({ onLogout }) {
   )
 }
 
+const TOKEN_KEY = 'peta-skanida.admin.token'
+
 function App() {
   const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu'
+  const [adminName, setAdminName] = useState('')
+  const [token, setToken] = useState('')
+  const [restoring, setRestoring] = useState(true)
+
+  // Pulihkan sesi admin dari token yang tersimpan di browser
+  useEffect(() => {
+    const savedToken = window.localStorage.getItem(TOKEN_KEY)
+    if (!savedToken) {
+      setRestoring(false)
+      return
+    }
+
+    let active = true
+    api
+      .me(savedToken)
+      .then(({ admin }) => {
+        if (!active) return
+        setToken(savedToken)
+        setAdminName(admin.nama)
+        setRole('admin')
+      })
+      .catch(() => {
+        window.localStorage.removeItem(TOKEN_KEY)
+      })
+      .finally(() => {
+        if (active) setRestoring(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  function handleLoginSuccess(nama, newToken) {
+    window.localStorage.setItem(TOKEN_KEY, newToken)
+    setToken(newToken)
+    setAdminName(nama)
+    setRole('admin')
+  }
+
+  function handleLogout() {
+    window.localStorage.removeItem(TOKEN_KEY)
+    setToken('')
+    setAdminName('')
+    setRole(null)
+  }
+
+  if (restoring) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f5f7fb] text-slate-400">
+        <Loader2 size={32} className="animate-spin text-indigo-400" />
+        <p className="mt-4 text-sm">Memuat sesi...</p>
+      </div>
+    )
+  }
 
   if (role === null) return <LoginPage onSelect={setRole} />
-  if (role === 'admin-login') return <AdminLoginPage onSuccess={() => setRole('admin')} onBack={() => setRole(null)} />
+  if (role === 'admin-login') return <AdminLoginPage onSuccess={handleLoginSuccess} onBack={() => setRole(null)} />
   if (role === 'tamu') return <GuestFormPage onBack={() => setRole(null)} onSubmit={form => {
     window.alert(`Terima kasih, ${form.name}. Permintaan kunjungan Anda telah dikirim dan akan diverifikasi oleh admin.`)
     setRole(null)
   }} />
-  return <AdminApp onLogout={() => setRole(null)} />
+  return <AdminApp adminName={adminName} token={token} onLogout={handleLogout} />
 }
 
 export default App

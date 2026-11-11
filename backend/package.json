@@ -1,0 +1,19 @@
+{
+  "name": "peta-skanida-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "REST API PeTa SKANIDA - perantara antara frontend dan database Supabase",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:sync": "node scripts/sync-migrations.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
