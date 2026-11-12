@@ -483,6 +483,178 @@ function GuestSuccessPage({ data, onAgain, onBack, theme, onToggleTheme }) {
   )
 }
 
+function Panel({ title, subtitle, action, children }) {
+  return (
+    <section className={`${CARD} overflow-hidden`}>
+      <div className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-bold text-slate-900 dark:text-slate-100">{title}</h2>
+          {subtitle && <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus }) {
+  if (!items.length) {
+    return <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data yang cocok.</div>
+  }
+  const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60 dark:text-slate-400">
+          <tr>
+            <th className="px-6 py-4 font-semibold">Pengunjung</th>
+            <th className="px-6 py-4 font-semibold">Tujuan</th>
+            <th className="px-6 py-4 font-semibold">Jadwal</th>
+            <th className="px-6 py-4 font-semibold">Jumlah</th>
+            <th className="px-6 py-4 font-semibold">Status</th>
+            {showContact && <th className="px-6 py-4 font-semibold">Kontak</th>}
+            {showActions && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {items.map(item => (
+            <tr key={item.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+              <td className="px-6 py-4">
+                <div className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</div>
+                <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.id} · {item.phone}</div>
+              </td>
+              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.purpose}</td>
+              <td className="px-6 py-4">
+                <div className="font-medium text-slate-700 dark:text-slate-300">{formatDate(item.date)}</div>
+                <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.time ? `${item.time} WIB` : '-'}</div>
+              </td>
+              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.people} orang</td>
+              <td className="px-6 py-4"><Status value={item.status} /></td>
+              {showContact && <td className="px-6 py-4">
+                <a href={waLink(item.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">
+                  <MessageCircle size={14} /> Hubungi
+                </a>
+              </td>}
+              {showActions && <td className="px-6 py-4">
+                {item.status === 'Pending' ? (
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => onUpdateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">Terima</button>
+                    <button onClick={() => onUpdateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20">Tolak</button>
+                  </div>
+                ) : <div className="text-right text-xs text-slate-400 dark:text-slate-500">Sudah diproses</div>}
+              </td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function SearchFilter({ query, onQueryChange, filter, onFilterChange }) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="relative flex-1">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+        <input
+          type="search"
+          value={query}
+          onChange={e => onQueryChange(e.target.value)}
+          placeholder="Cari nama atau ID request..."
+          aria-label="Cari nama atau ID request"
+          className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
+        />
+      </div>
+      <div className="relative">
+        <Filter className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+        <select
+          value={filter}
+          onChange={e => onFilterChange(e.target.value)}
+          aria-label="Filter status"
+          className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:focus:border-indigo-500 sm:w-44"
+        >
+          <option>Semua</option><option>Pending</option><option>Diterima</option><option>Ditolak</option>
+        </select>
+      </div>
+    </div>
+  )
+}
+
+function Dashboard({ requests, adminName, onGoTo, onUpdateStatus }) {
+  const pending = requests.filter(item => item.status === 'Pending')
+  const accepted = requests.filter(item => item.status === 'Diterima')
+  const rejected = requests.filter(item => item.status === 'Ditolak')
+  const today = new Date().toISOString().split('T')[0]
+  const upcoming = requests.filter(item => item.status === 'Diterima' && item.date >= today)
+
+  return <>
+    <div className="mb-7">
+      <p className="text-sm text-slate-500 dark:text-slate-400">Selamat datang kembali, {adminName || 'Admin'} 👋</p>
+      <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Ringkasan aktivitas</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Pantau permintaan dan jadwal kunjungan dalam satu tempat.</p>
+    </div>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard title="Total Request" value={requests.length} note="Seluruh permintaan masuk" icon={ClipboardList} tint="bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300" />
+      <StatCard title="Menunggu" value={pending.length} note="Perlu tindakan admin" icon={Hourglass} tint="bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300" />
+      <StatCard title="Diterima" value={accepted.length} note="Permintaan disetujui" icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300" />
+      <StatCard title="Ditolak" value={rejected.length} note="Permintaan tidak disetujui" icon={XCircle} tint="bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300" />
+    </div>
+    <div className="mt-6 grid gap-6 2xl:grid-cols-[1.5fr_1fr]">
+      <Panel title="Request terbaru" subtitle="Permintaan kunjungan yang baru masuk" action={<button onClick={() => onGoTo('request')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Lihat semua <ArrowUpRight className="ml-1 inline" size={15} /></button>}>
+        <RequestTable items={requests.slice(0, 4)} showActions onUpdateStatus={onUpdateStatus} />
+      </Panel>
+      <Panel title="Kunjungan mendatang" subtitle="Jadwal kunjungan yang telah disetujui">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {upcoming.length ? upcoming.map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
+            <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><CalendarDays size={19} /></div>
+            <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
+          </div>) : <p className="px-5 py-10 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada jadwal mendatang.</p>}
+        </div>
+      </Panel>
+    </div>
+  </>
+}
+
+function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, onUpdateStatus }) {
+  const isPending = type === 'request'
+  const items = isPending
+    ? visibleRequests.filter(item => item.status === 'Pending')
+    : visibleRequests.filter(item => item.status === 'Diterima' || item.status === 'Ditolak')
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak, lengkap dengan kontaknya.'}</p>
+    </div>
+    <div className="mb-5">
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} />
+    </div>
+    <Panel title={isPending ? 'Permintaan menunggu persetujuan' : 'Daftar tamu terkelola'} subtitle={`${items.length} data ditemukan`}>
+      <RequestTable items={items} showActions={isPending} showContact={!isPending} onUpdateStatus={onUpdateStatus} />
+    </Panel>
+  </>
+}
+
+function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange }) {
+  const items = visibleRequests
+    .filter(item => item.status !== 'Pending')
+    .slice()
+    .sort((a, b) => {
+      const toValue = ({ date, time }) => new Date(`${date}T${time || '00:00'}`).getTime()
+      return toValue(b) - toValue(a)
+    })
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Semua permintaan yang sudah diterima atau ditolak.</p>
+    </div>
+    <div className="mb-5">
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} />
+    </div>
+    <Panel title="Riwayat request" subtitle={`${items.length} data telah diproses`}><RequestTable items={items} /></Panel>
+  </>
+}
+
 function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
   const [active, setActive] = useState('dashboard')
   const [requests, setRequests] = useState([])
@@ -516,12 +688,6 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
 
     return unsubscribe
   }, [token])
-
-  const pending = requests.filter(item => item.status === 'Pending')
-  const accepted = requests.filter(item => item.status === 'Diterima')
-  const rejected = requests.filter(item => item.status === 'Ditolak')
-  const today = new Date().toISOString().split('T')[0]
-  const upcoming = requests.filter(item => item.status === 'Diterima' && item.date >= today)
 
   const visibleRequests = useMemo(() => requests.filter(item => {
     const matchesQuery = `${item.name} ${item.id} ${item.purpose}`.toLowerCase().includes(query.toLowerCase())
@@ -557,139 +723,6 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
   }
 
   const pageTitle = navItems.find(item => item.id === active)?.label || 'Dashboard'
-
-  function RequestTable({ items, showActions = false, showContact = false }) {
-    if (!items.length) return <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data yang cocok.</div>
-    const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60 dark:text-slate-400">
-            <tr>
-              <th className="px-6 py-4 font-semibold">Pengunjung</th>
-              <th className="px-6 py-4 font-semibold">Tujuan</th>
-              <th className="px-6 py-4 font-semibold">Jadwal</th>
-              <th className="px-6 py-4 font-semibold">Jumlah</th>
-              <th className="px-6 py-4 font-semibold">Status</th>
-              {showContact && <th className="px-6 py-4 font-semibold">Kontak</th>}
-              {showActions && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {items.map(item => (
-              <tr key={item.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                <td className="px-6 py-4">
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</div>
-                  <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.id} · {item.phone}</div>
-                </td>
-                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.purpose}</td>
-                <td className="px-6 py-4">
-                  <div className="font-medium text-slate-700 dark:text-slate-300">{formatDate(item.date)}</div>
-                  <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.time ? `${item.time} WIB` : '-'}</div>
-                </td>
-                <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.people} orang</td>
-                <td className="px-6 py-4"><Status value={item.status} /></td>
-                {showContact && <td className="px-6 py-4">
-                  <a href={waLink(item.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">
-                    <MessageCircle size={14} /> Hubungi
-                  </a>
-                </td>}
-                {showActions && <td className="px-6 py-4">
-                  {item.status === 'Pending' ? (
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => updateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">Terima</button>
-                      <button onClick={() => updateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20">Tolak</button>
-                    </div>
-                  ) : <div className="text-right text-xs text-slate-400 dark:text-slate-500">Sudah diproses</div>}
-                </td>}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
-  function SearchFilter() {
-    return <div className="flex flex-col gap-3 sm:flex-row">
-      <div className="relative flex-1">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari nama atau ID request..." className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20" />
-      </div>
-      <div className="relative">
-        <Filter className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:focus:border-indigo-500 sm:w-44">
-          <option>Semua</option><option>Pending</option><option>Diterima</option><option>Ditolak</option>
-        </select>
-      </div>
-    </div>
-  }
-
-  function Panel({ title, subtitle, children, action }) {
-    return <section className={`${CARD} overflow-hidden`}>
-      <div className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="font-bold text-slate-900 dark:text-slate-100">{title}</h2>{subtitle && <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{subtitle}</p>}</div>
-        {action}
-      </div>
-      {children}
-    </section>
-  }
-
-  function Dashboard() {
-    return <>
-      <div className="mb-7">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Selamat datang kembali, {adminName || 'Admin'} 👋</p>
-        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Ringkasan aktivitas</h2>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Pantau permintaan dan jadwal kunjungan dalam satu tempat.</p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Request" value={requests.length} note="Seluruh permintaan masuk" icon={ClipboardList} tint="bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300" />
-        <StatCard title="Menunggu" value={pending.length} note="Perlu tindakan admin" icon={Hourglass} tint="bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300" />
-        <StatCard title="Diterima" value={accepted.length} note="Permintaan disetujui" icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300" />
-        <StatCard title="Ditolak" value={rejected.length} note="Permintaan tidak disetujui" icon={XCircle} tint="bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300" />
-      </div>
-      <div className="mt-6 grid gap-6 2xl:grid-cols-[1.5fr_1fr]">
-        <Panel title="Request terbaru" subtitle="Permintaan kunjungan yang baru masuk" action={<button onClick={() => goTo('request')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Lihat semua <ArrowUpRight className="ml-1 inline" size={15} /></button>}>
-          <RequestTable items={requests.slice(0, 4)} showActions />
-        </Panel>
-        <Panel title="Kunjungan mendatang" subtitle="Jadwal kunjungan yang telah disetujui">
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {upcoming.length ? upcoming.map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
-              <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><CalendarDays size={19} /></div>
-              <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
-            </div>) : <p className="px-5 py-10 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada jadwal mendatang.</p>}
-          </div>
-        </Panel>
-      </div>
-    </>
-  }
-
-  function ListingPage({ type }) {
-    const isPending = type === 'request'
-    const items = isPending ? visibleRequests.filter(item => item.status === 'Pending') : visibleRequests.filter(item => item.status === 'Diterima' || item.status === 'Ditolak')
-    return <>
-      <div className="mb-6"><h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak, lengkap dengan kontaknya.'}</p></div>
-      <div className="mb-5"><SearchFilter /></div>
-      <Panel title={isPending ? 'Permintaan menunggu persetujuan' : 'Daftar tamu terkelola'} subtitle={`${items.length} data ditemukan`}>
-        <RequestTable items={items} showActions={isPending} showContact={!isPending} />
-      </Panel>
-    </>
-  }
-
-  function HistoryPage() {
-    const items = visibleRequests
-      .filter(item => item.status !== 'Pending')
-      .slice()
-      .sort((a, b) => {
-        const toValue = ({ date, time }) => new Date(`${date}T${time || '00:00'}`).getTime()
-        return toValue(b) - toValue(a)
-      })
-    return <>
-      <div className="mb-6"><h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Semua permintaan yang sudah diterima atau ditolak.</p></div>
-      <div className="mb-5"><SearchFilter /></div>
-      <Panel title="Riwayat request" subtitle={`${items.length} data telah diproses`}><RequestTable items={items} /></Panel>
-    </>
-  }
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] dark:bg-slate-950">
@@ -746,10 +779,10 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
             </div>
           ) : (
             <>
-              {active === 'dashboard' && <Dashboard />}
-              {active === 'tamu' && <ListingPage type="tamu" />}
-              {active === 'request' && <ListingPage type="request" />}
-              {active === 'riwayat' && <HistoryPage />}
+              {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} onUpdateStatus={updateStatus} />}
+              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onUpdateStatus={updateStatus} />}
+              {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onUpdateStatus={updateStatus} />}
+              {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
             </>
           )}
           <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
