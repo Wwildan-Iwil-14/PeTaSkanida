@@ -25,8 +25,8 @@ export const config = {
   // database yang belum dijalankan migration pengetatan RLS.
   supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '',
   usingServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-  authSecret: process.env.AUTH_SECRET || 'peta-skanida-dev-secret-change-me',
-  tokenTtlSeconds: Number(process.env.TOKEN_TTL_SECONDS || 60 * 60 * 8),
+  // Catatan: masa berlaku & tanda tangan token login diurus Supabase Auth (GoTrue),
+  // sehingga AUTH_SECRET / TOKEN_TTL_SECONDS tidak lagi dipakai.
   corsOrigins: toList(process.env.CORS_ORIGIN || 'http://localhost:5173'),
   nodeEnv: process.env.NODE_ENV || 'development',
 }

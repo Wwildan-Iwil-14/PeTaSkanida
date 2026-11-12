@@ -110,11 +110,13 @@ Halaman awal menyediakan dua pilihan:
 - **Tamu** → isi form permintaan kunjungan.
 - **Admin / Pengelola** → login untuk mengelola.
 
-### Akun admin default
+### Akun admin
 
-| Username | Password |
+Login admin menggunakan **email** dan **password** yang dibuat melalui skrip backend `npm run admin:create`:
+
+| Email | Password |
 |---|---|
-| `admin` | `admin123` |
+| `admin@skanida.sch.id` | `admin123` *(atau password yang kamu buat)* |
 
 Ganti password setelah login pertama (lihat [`../database/README.md`](../database/README.md)).
 
