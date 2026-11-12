@@ -3,11 +3,47 @@ import { api } from './lib/api'
 import { subscribeToRequests } from './lib/realtime'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
-  Search, Bell, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
-  ArrowUpRight, ChevronRight, MapPin, UserRound, Filter, ShieldCheck,
-  CalendarCheck, MoreHorizontal, Eye, EyeOff, MessageCircle,
-  Loader2, AlertCircle
+  Search, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
+  ArrowUpRight, ChevronRight, UserRound, Filter, ShieldCheck,
+  CalendarCheck, Eye, EyeOff, MessageCircle,
+  Loader2, AlertCircle, Moon, Sun, Copy, Check
 } from 'lucide-react'
+
+const THEME_KEY = 'peta-skanida.theme'
+
+const CARD = 'rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
+const FIELD = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
+const SELECT = 'w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
+
+function getInitialTheme() {
+  if (typeof window === 'undefined') return 'light'
+  try {
+    const saved = window.localStorage.getItem(THEME_KEY)
+    if (saved === 'dark' || saved === 'light') return saved
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  } catch {
+    return 'light'
+  }
+}
+
+function ThemeToggle({ theme, onToggle, className = '' }) {
+  const isDark = theme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={isDark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
+      title={isDark ? 'Mode terang' : 'Mode gelap'}
+      className={`grid h-10 w-10 place-items-center rounded-full border shadow-sm transition ${
+        isDark
+          ? 'border-slate-700 bg-slate-800 text-amber-300 hover:bg-slate-700'
+          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+      } ${className}`}
+    >
+      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
+  )
+}
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -42,9 +78,9 @@ function mapRecord(r, status) {
 
 function Status({ value }) {
   const styles = {
-    Pending: 'bg-amber-50 text-amber-700 ring-amber-200',
-    Diterima: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    Ditolak: 'bg-rose-50 text-rose-700 ring-rose-200',
+    Pending: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30',
+    Diterima: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30',
+    Ditolak: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30',
   }
   const Icon = value === 'Pending' ? Hourglass : value === 'Diterima' ? CheckCircle2 : XCircle
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styles[value]}`}><Icon size={13} />{value}</span>
@@ -52,12 +88,12 @@ function Status({ value }) {
 
 function StatCard({ title, value, note, icon: Icon, tint }) {
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <article className={`${CARD} p-5`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
-          <p className="mt-2 text-xs text-slate-400">{note}</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{value}</p>
+          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{note}</p>
         </div>
         <div className={`rounded-xl p-3 ${tint}`}><Icon size={21} /></div>
       </div>
@@ -65,10 +101,19 @@ function StatCard({ title, value, note, icon: Icon, tint }) {
   )
 }
 
-function LoginPage({ onSelect }) {
+function ThemeToggleCorner({ theme, onToggleTheme }) {
   return (
-    <div className="grid min-h-screen bg-[#f5f7fb] lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white lg:flex">
+    <div className="fixed right-4 top-4 z-50">
+      <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+    </div>
+  )
+}
+
+function LoginPage({ onSelect, theme, onToggleTheme }) {
+  return (
+    <div className="relative grid min-h-screen bg-[#f5f7fb] dark:bg-slate-950 lg:grid-cols-2">
+      <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white dark:bg-slate-900 lg:flex">
         <div className="flex items-center gap-3">
           <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
           <div>
@@ -87,35 +132,35 @@ function LoginPage({ onSelect }) {
         </div>
         <p className="text-xs text-slate-500">© 2026 PeTa SKANIDA · Admin Panel</p>
       </div>
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <div className="flex items-center justify-center p-6 pt-20 sm:p-10">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
               <div>
-                <p className="font-bold tracking-wide text-slate-900">PeTa SKANIDA</p>
-                <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
+                <p className="font-bold tracking-wide text-slate-900 dark:text-slate-100">PeTa SKANIDA</p>
+                <p className="text-[10px] tracking-[.15em] text-slate-400 dark:text-slate-500">SMKN 2 MAGELANG</p>
               </div>
             </div>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Selamat Datang 👋</h2>
-          <p className="mt-2 text-sm text-slate-500">Pilih jenis akses untuk melanjutkan ke aplikasi.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Selamat Datang 👋</h2>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Pilih jenis akses untuk melanjutkan ke aplikasi.</p>
           <div className="mt-8 space-y-4">
-            <button onClick={() => onSelect('admin-login')} className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-500 group-hover:text-white"><ShieldCheck size={22} /></div>
+            <button onClick={() => onSelect('admin-login')} className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-indigo-500">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-500 group-hover:text-white dark:bg-indigo-500/15 dark:text-indigo-300"><ShieldCheck size={22} /></div>
               <div className="min-w-0">
-                <p className="font-bold text-slate-800">Admin / Pengelola</p>
-                <p className="mt-0.5 text-xs text-slate-400">Kelola request, tamu, dan riwayat kunjungan.</p>
+                <p className="font-bold text-slate-800 dark:text-slate-100">Admin / Pengelola</p>
+                <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Kelola request, tamu, dan riwayat kunjungan.</p>
               </div>
-              <ChevronRight className="ml-auto shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-500" size={20} />
+              <ChevronRight className="ml-auto shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-500 dark:text-slate-600" size={20} />
             </button>
-            <button onClick={() => onSelect('tamu')} className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-500 group-hover:text-white"><UserRound size={22} /></div>
+            <button onClick={() => onSelect('tamu')} className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-500">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-500 group-hover:text-white dark:bg-emerald-500/15 dark:text-emerald-300"><UserRound size={22} /></div>
               <div className="min-w-0">
-                <p className="font-bold text-slate-800">Tamu</p>
-                <p className="mt-0.5 text-xs text-slate-400">Ajukan permintaan kunjungan ke SKANIDA.</p>
+                <p className="font-bold text-slate-800 dark:text-slate-100">Tamu</p>
+                <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Ajukan permintaan kunjungan ke SKANIDA.</p>
               </div>
-              <ChevronRight className="ml-auto shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-500" size={20} />
+              <ChevronRight className="ml-auto shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-500 dark:text-slate-600" size={20} />
             </button>
           </div>
         </div>
@@ -124,7 +169,7 @@ function LoginPage({ onSelect }) {
   )
 }
 
-function AdminLoginPage({ onSuccess, onBack }) {
+function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -148,8 +193,9 @@ function AdminLoginPage({ onSuccess, onBack }) {
   }
 
   return (
-    <div className="grid min-h-screen bg-[#f5f7fb] lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white lg:flex">
+    <div className="relative grid min-h-screen bg-[#f5f7fb] dark:bg-slate-950 lg:grid-cols-2">
+      <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white dark:bg-slate-900 lg:flex">
         <div className="flex items-center gap-3">
           <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
           <div>
@@ -166,33 +212,33 @@ function AdminLoginPage({ onSuccess, onBack }) {
         </div>
         <p className="text-xs text-slate-500">© 2026 PeTa SKANIDA · Admin Panel</p>
       </div>
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <div className="flex items-center justify-center p-6 pt-20 sm:p-10">
         <div className="w-full max-w-md">
-          <button onClick={onBack} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-indigo-600">
+          <button onClick={onBack} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
             <ChevronRight className="rotate-180" size={17} /> Kembali
           </button>
-          <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+          <div className={`${CARD} p-6 sm:p-8`}>
             <div className="mb-7 flex items-start gap-4">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600"><ShieldCheck size={22} /></div>
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><ShieldCheck size={22} /></div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-slate-900">Login Admin</h1>
-                <p className="mt-1 text-sm text-slate-500">Masukkan nama akun dan password untuk masuk ke dashboard.</p>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Login Admin</h1>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Masukkan nama akun dan password untuk masuk ke dashboard.</p>
               </div>
             </div>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Nama Akun</label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">Nama Akun</label>
                 <input
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   placeholder="Nama akun admin"
                   autoComplete="username"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
+                  className={FIELD}
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -200,15 +246,15 @@ function AdminLoginPage({ onSuccess, onBack }) {
                     onChange={e => setPassword(e.target.value)}
                     placeholder="Password"
                     autoComplete="current-password"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
+                    className={`${FIELD} pr-12`}
                   />
-                  <button type="button" onClick={() => setShowPassword(current => !current)} aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 transition hover:text-indigo-600">
+                  <button type="button" onClick={() => setShowPassword(current => !current)} aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 transition hover:text-indigo-600 dark:hover:text-indigo-400">
                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
               </div>
-              {error && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">{error}</p>}
-              <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600 disabled:opacity-60">
+              {error && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
+              <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600 disabled:opacity-60 dark:shadow-indigo-950/40">
                 {submitting && <Loader2 size={16} className="animate-spin" />}
                 {submitting ? 'Memeriksa...' : 'Masuk'}
               </button>
@@ -225,7 +271,7 @@ const opsiTujuan = ['Pilih tujuan...', 'Kepala SKANIDA', 'Staf Administrasi', 'D
 // GANTI pilihan di bawah ini saat opsi keperluan sudah disediakan.
 const opsiKeperluan = ['Pilih keperluan...', 'Bertemu keluarga', 'Kunjungan dinas', 'Keperluan administrasi', 'Lainnya...']
 
-function GuestFormPage({ onBack, onSubmit }) {
+function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', date: '', time: '', people: '1', tujuan: '', keperluan: '' })
   const [customOpen, setCustomOpen] = useState({})
   const [error, setError] = useState('')
@@ -257,7 +303,7 @@ function GuestFormPage({ onBack, onSubmit }) {
     setError('')
     setSubmitting(true)
     try {
-      await api.createRequest({
+      const result = await api.createRequest({
         nama: form.name.trim(),
         email: form.email.trim(),
         no_hp: form.phone.trim(),
@@ -267,7 +313,17 @@ function GuestFormPage({ onBack, onSubmit }) {
         waktu: form.time,
         jumlah: parseInt(form.people) || 1,
       })
-      onSubmit(form)
+      onSubmit({
+        id: result?.request?.id,
+        nama: form.name.trim(),
+        email: form.email.trim(),
+        no_hp: form.phone.trim(),
+        tujuan: form.tujuan,
+        keperluan: form.keperluan,
+        tanggal: form.date,
+        waktu: form.time,
+        jumlah: parseInt(form.people) || 1,
+      })
     } catch (err) {
       setError('Gagal mengirim permintaan: ' + (err.message || 'Terjadi kesalahan. Silakan coba lagi.'))
     } finally {
@@ -286,41 +342,42 @@ function GuestFormPage({ onBack, onSubmit }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] px-4 py-10 sm:px-8">
-      <div className="mx-auto max-w-xl">
-        <button onClick={onBack} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-indigo-600">
+    <div className="relative min-h-screen bg-[#f5f7fb] px-4 py-10 dark:bg-slate-950 sm:px-8">
+      <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
+      <div className="mx-auto max-w-xl pt-10 sm:pt-0">
+        <button onClick={onBack} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
           <ChevronRight className="rotate-180" size={17} /> Kembali ke halaman login
         </button>
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+        <div className={`${CARD} p-6 sm:p-8`}>
           <div className="mb-7 flex items-start gap-4">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><UserRound size={22} /></div>
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"><UserRound size={22} /></div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Form Permintaan Kunjungan</h1>
-              <p className="mt-1 text-sm text-slate-500">Lengkapi data berikut untuk mengajukan kunjungan ke SKANIDA.</p>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Form Permintaan Kunjungan</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Lengkapi data berikut untuk mengajukan kunjungan ke SKANIDA.</p>
             </div>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {fields.map(({ key, label, type, placeholder }) => (
               <div key={key}>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">{label}</label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
                 <input
                   type={type}
                   value={form[key]}
                   onChange={e => setForm({ ...form, [key]: e.target.value })}
                   placeholder={placeholder}
                   min={type === 'number' ? 1 : undefined}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
+                  className={FIELD}
                 />
               </div>
             ))}
             {[{ key: 'tujuan', label: 'Tujuan (mau bertemu siapa)', options: opsiTujuan, placeholder: 'Tuliskan tujuan Anda...' }, { key: 'keperluan', label: 'Keperluan', options: opsiKeperluan, placeholder: 'Tuliskan keperluan Anda...' }].map(({ key, label, options, placeholder }) => (
               <div key={key}>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">{label}</label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
                 <div className="relative">
                   <select
                     value={customOpen[key] ? 'Lainnya...' : form[key]}
                     onChange={e => handleSelectChange(key, e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
+                    className={SELECT}
                   >
                     {options.map(opt => <option key={opt} value={opt === options[0] ? '' : opt}>{opt}</option>)}
                   </select>
@@ -331,13 +388,13 @@ function GuestFormPage({ onBack, onSubmit }) {
                     value={form[key]}
                     onChange={e => setForm({ ...form, [key]: e.target.value })}
                     placeholder={placeholder}
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-indigo-50/40 px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
+                    className={`mt-2 ${FIELD} bg-indigo-50/40 dark:bg-indigo-500/10`}
                   />
                 )}
               </div>
             ))}
-            {error && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">{error}</p>}
-            <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600 disabled:opacity-60">
+            {error && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
+            <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600 disabled:opacity-60 dark:shadow-indigo-950/40">
               {submitting && <Loader2 size={16} className="animate-spin" />}
               {submitting ? 'Mengirim...' : 'Kirim Permintaan'}
             </button>
@@ -348,7 +405,257 @@ function GuestFormPage({ onBack, onSubmit }) {
   )
 }
 
-function AdminApp({ onLogout, adminName, token }) {
+function GuestSuccessPage({ data, onAgain, onBack, theme, onToggleTheme }) {
+  const [copied, setCopied] = useState(false)
+  const ref = data?.id ? `REQ-${String(data.id).padStart(3, '0')}` : ''
+
+  async function copyRef() {
+    if (!ref) return
+    try {
+      await navigator.clipboard.writeText(ref)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard tidak tersedia; abaikan
+    }
+  }
+
+  const rows = [
+    ['Nama / Instansi', data?.nama],
+    ['Tujuan', data?.tujuan],
+    ['Keperluan', data?.keperluan],
+    ['Tanggal', formatDate(data?.tanggal)],
+    ['Waktu', data?.waktu ? `${data.waktu} WIB` : '-'],
+    ['Jumlah Pengunjung', data?.jumlah ? `${data.jumlah} orang` : '-'],
+  ]
+
+  return (
+    <div className="relative min-h-screen bg-[#f5f7fb] px-4 py-10 dark:bg-slate-950 sm:px-8">
+      <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
+      <div className="mx-auto max-w-xl pt-10 sm:pt-0">
+        <button onClick={onBack} className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
+          <ChevronRight className="rotate-180" size={17} /> Kembali ke halaman login
+        </button>
+        <div className={`${CARD} p-6 sm:p-8`}>
+          <div className="flex flex-col items-center text-center">
+            <div className="grid h-16 w-16 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+              <CheckCircle2 size={34} />
+            </div>
+            <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Permintaan Terkirim!</h1>
+            <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+              Terima kasih, <span className="font-semibold text-slate-700 dark:text-slate-300">{data?.nama}</span>.
+              Permintaan kunjungan Anda sudah kami terima dan akan diverifikasi oleh admin.
+            </p>
+          </div>
+
+          {ref && (
+            <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+              <p className="text-center text-xs font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-300">Kode Referensi</p>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <span className="text-2xl font-extrabold tracking-widest text-indigo-700 dark:text-indigo-200">{ref}</span>
+                <button
+                  type="button"
+                  onClick={copyRef}
+                  aria-label="Salin kode referensi"
+                  className="rounded-lg p-1.5 text-indigo-500 transition hover:bg-indigo-100 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+              <p className="mt-2 text-center text-xs text-indigo-500/90 dark:text-indigo-300/80">Simpan kode ini untuk menanyakan status kunjungan Anda.</p>
+            </div>
+          )}
+
+          <dl className="mt-6 divide-y divide-slate-100 rounded-2xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex items-start justify-between gap-4 px-4 py-3">
+                <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</dt>
+                <dd className="text-right text-sm font-semibold text-slate-800 dark:text-slate-200">{value || '-'}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <button onClick={onAgain} className="mt-6 w-full rounded-xl bg-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-600 dark:shadow-indigo-950/40">Ajukan Permintaan Lain</button>
+          <button onClick={onBack} className="mt-3 w-full rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Kembali ke Halaman Login</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Panel({ title, subtitle, action, children }) {
+  return (
+    <section className={`${CARD} overflow-hidden`}>
+      <div className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-bold text-slate-900 dark:text-slate-100">{title}</h2>
+          {subtitle && <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus }) {
+  if (!items.length) {
+    return <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data yang cocok.</div>
+  }
+  const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60 dark:text-slate-400">
+          <tr>
+            <th className="px-6 py-4 font-semibold">Pengunjung</th>
+            <th className="px-6 py-4 font-semibold">Tujuan</th>
+            <th className="px-6 py-4 font-semibold">Jadwal</th>
+            <th className="px-6 py-4 font-semibold">Jumlah</th>
+            <th className="px-6 py-4 font-semibold">Status</th>
+            {showContact && <th className="px-6 py-4 font-semibold">Kontak</th>}
+            {showActions && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {items.map(item => (
+            <tr key={item.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+              <td className="px-6 py-4">
+                <div className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</div>
+                <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.id} · {item.phone}</div>
+              </td>
+              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.purpose}</td>
+              <td className="px-6 py-4">
+                <div className="font-medium text-slate-700 dark:text-slate-300">{formatDate(item.date)}</div>
+                <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.time ? `${item.time} WIB` : '-'}</div>
+              </td>
+              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.people} orang</td>
+              <td className="px-6 py-4"><Status value={item.status} /></td>
+              {showContact && <td className="px-6 py-4">
+                <a href={waLink(item.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">
+                  <MessageCircle size={14} /> Hubungi
+                </a>
+              </td>}
+              {showActions && <td className="px-6 py-4">
+                {item.status === 'Pending' ? (
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => onUpdateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">Terima</button>
+                    <button onClick={() => onUpdateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20">Tolak</button>
+                  </div>
+                ) : <div className="text-right text-xs text-slate-400 dark:text-slate-500">Sudah diproses</div>}
+              </td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function SearchFilter({ query, onQueryChange, filter, onFilterChange }) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="relative flex-1">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+        <input
+          type="search"
+          value={query}
+          onChange={e => onQueryChange(e.target.value)}
+          placeholder="Cari nama atau ID request..."
+          aria-label="Cari nama atau ID request"
+          className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
+        />
+      </div>
+      <div className="relative">
+        <Filter className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+        <select
+          value={filter}
+          onChange={e => onFilterChange(e.target.value)}
+          aria-label="Filter status"
+          className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:focus:border-indigo-500 sm:w-44"
+        >
+          <option>Semua</option><option>Pending</option><option>Diterima</option><option>Ditolak</option>
+        </select>
+      </div>
+    </div>
+  )
+}
+
+function Dashboard({ requests, adminName, onGoTo, onUpdateStatus }) {
+  const pending = requests.filter(item => item.status === 'Pending')
+  const accepted = requests.filter(item => item.status === 'Diterima')
+  const rejected = requests.filter(item => item.status === 'Ditolak')
+  const today = new Date().toISOString().split('T')[0]
+  const upcoming = requests.filter(item => item.status === 'Diterima' && item.date >= today)
+
+  return <>
+    <div className="mb-7">
+      <p className="text-sm text-slate-500 dark:text-slate-400">Selamat datang kembali, {adminName || 'Admin'} 👋</p>
+      <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Ringkasan aktivitas</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Pantau permintaan dan jadwal kunjungan dalam satu tempat.</p>
+    </div>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard title="Total Request" value={requests.length} note="Seluruh permintaan masuk" icon={ClipboardList} tint="bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300" />
+      <StatCard title="Menunggu" value={pending.length} note="Perlu tindakan admin" icon={Hourglass} tint="bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300" />
+      <StatCard title="Diterima" value={accepted.length} note="Permintaan disetujui" icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300" />
+      <StatCard title="Ditolak" value={rejected.length} note="Permintaan tidak disetujui" icon={XCircle} tint="bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300" />
+    </div>
+    <div className="mt-6 grid gap-6 2xl:grid-cols-[1.5fr_1fr]">
+      <Panel title="Request terbaru" subtitle="Permintaan kunjungan yang baru masuk" action={<button onClick={() => onGoTo('request')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Lihat semua <ArrowUpRight className="ml-1 inline" size={15} /></button>}>
+        <RequestTable items={requests.slice(0, 4)} showActions onUpdateStatus={onUpdateStatus} />
+      </Panel>
+      <Panel title="Kunjungan mendatang" subtitle="Jadwal kunjungan yang telah disetujui">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {upcoming.length ? upcoming.map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
+            <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><CalendarDays size={19} /></div>
+            <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
+          </div>) : <p className="px-5 py-10 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada jadwal mendatang.</p>}
+        </div>
+      </Panel>
+    </div>
+  </>
+}
+
+function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, onUpdateStatus }) {
+  const isPending = type === 'request'
+  const items = isPending
+    ? visibleRequests.filter(item => item.status === 'Pending')
+    : visibleRequests.filter(item => item.status === 'Diterima' || item.status === 'Ditolak')
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak, lengkap dengan kontaknya.'}</p>
+    </div>
+    <div className="mb-5">
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} />
+    </div>
+    <Panel title={isPending ? 'Permintaan menunggu persetujuan' : 'Daftar tamu terkelola'} subtitle={`${items.length} data ditemukan`}>
+      <RequestTable items={items} showActions={isPending} showContact={!isPending} onUpdateStatus={onUpdateStatus} />
+    </Panel>
+  </>
+}
+
+function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange }) {
+  const items = visibleRequests
+    .filter(item => item.status !== 'Pending')
+    .slice()
+    .sort((a, b) => {
+      const toValue = ({ date, time }) => new Date(`${date}T${time || '00:00'}`).getTime()
+      return toValue(b) - toValue(a)
+    })
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Semua permintaan yang sudah diterima atau ditolak.</p>
+    </div>
+    <div className="mb-5">
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} />
+    </div>
+    <Panel title="Riwayat request" subtitle={`${items.length} data telah diproses`}><RequestTable items={items} /></Panel>
+  </>
+}
+
+function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
   const [active, setActive] = useState('dashboard')
   const [requests, setRequests] = useState([])
   const [query, setQuery] = useState('')
@@ -381,12 +688,6 @@ function AdminApp({ onLogout, adminName, token }) {
 
     return unsubscribe
   }, [token])
-
-  const pending = requests.filter(item => item.status === 'Pending')
-  const accepted = requests.filter(item => item.status === 'Diterima')
-  const rejected = requests.filter(item => item.status === 'Ditolak')
-  const today = new Date().toISOString().split('T')[0]
-  const upcoming = requests.filter(item => item.status === 'Diterima' && item.date >= today)
 
   const visibleRequests = useMemo(() => requests.filter(item => {
     const matchesQuery = `${item.name} ${item.id} ${item.purpose}`.toLowerCase().includes(query.toLowerCase())
@@ -423,143 +724,10 @@ function AdminApp({ onLogout, adminName, token }) {
 
   const pageTitle = navItems.find(item => item.id === active)?.label || 'Dashboard'
 
-  function RequestTable({ items, showActions = false, showContact = false }) {
-    if (!items.length) return <div className="px-6 py-12 text-center text-sm text-slate-400">Tidak ada data yang cocok.</div>
-    const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400">
-            <tr>
-              <th className="px-6 py-4 font-semibold">Pengunjung</th>
-              <th className="px-6 py-4 font-semibold">Tujuan</th>
-              <th className="px-6 py-4 font-semibold">Jadwal</th>
-              <th className="px-6 py-4 font-semibold">Jumlah</th>
-              <th className="px-6 py-4 font-semibold">Status</th>
-              {showContact && <th className="px-6 py-4 font-semibold">Kontak</th>}
-              {showActions && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {items.map(item => (
-              <tr key={item.id} className="transition hover:bg-slate-50/80">
-                <td className="px-6 py-4">
-                  <div className="font-semibold text-slate-800">{item.name}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.id} · {item.phone}</div>
-                </td>
-                <td className="px-6 py-4 text-slate-600">{item.purpose}</td>
-                <td className="px-6 py-4">
-                  <div className="font-medium text-slate-700">{formatDate(item.date)}</div>
-                  <div className="mt-1 text-xs text-slate-400">{item.time ? `${item.time} WIB` : '-'}</div>
-                </td>
-                <td className="px-6 py-4 text-slate-600">{item.people} orang</td>
-                <td className="px-6 py-4"><Status value={item.status} /></td>
-                {showContact && <td className="px-6 py-4">
-                  <a href={waLink(item.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                    <MessageCircle size={14} /> Hubungi
-                  </a>
-                </td>}
-                {showActions && <td className="px-6 py-4">
-                  {item.status === 'Pending' ? (
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => updateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">Terima</button>
-                      <button onClick={() => updateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">Tolak</button>
-                    </div>
-                  ) : <div className="text-right text-xs text-slate-400">Sudah diproses</div>}
-                </td>}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
-  function SearchFilter() {
-    return <div className="flex flex-col gap-3 sm:flex-row">
-      <div className="relative flex-1">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari nama atau ID request..." className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50" />
-      </div>
-      <div className="relative">
-        <Filter className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 sm:w-44">
-          <option>Semua</option><option>Pending</option><option>Diterima</option><option>Ditolak</option>
-        </select>
-      </div>
-    </div>
-  }
-
-  function Panel({ title, subtitle, children, action }) {
-    return <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-      <div className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="font-bold text-slate-900">{title}</h2>{subtitle && <p className="mt-1 text-xs text-slate-400">{subtitle}</p>}</div>
-        {action}
-      </div>
-      {children}
-    </section>
-  }
-
-  function Dashboard() {
-    return <>
-      <div className="mb-7">
-        <p className="text-sm text-slate-500">Selamat datang kembali, {adminName || 'Admin'} 👋</p>
-        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Ringkasan aktivitas</h2>
-        <p className="mt-2 text-sm text-slate-500">Pantau permintaan dan jadwal kunjungan dalam satu tempat.</p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Request" value={requests.length} note="Seluruh permintaan masuk" icon={ClipboardList} tint="bg-indigo-50 text-indigo-600" />
-        <StatCard title="Menunggu" value={pending.length} note="Perlu tindakan admin" icon={Hourglass} tint="bg-amber-50 text-amber-600" />
-        <StatCard title="Diterima" value={accepted.length} note="Permintaan disetujui" icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" />
-        <StatCard title="Ditolak" value={rejected.length} note="Permintaan tidak disetujui" icon={XCircle} tint="bg-rose-50 text-rose-600" />
-      </div>
-      <div className="mt-6 grid gap-6 2xl:grid-cols-[1.5fr_1fr]">
-        <Panel title="Request terbaru" subtitle="Permintaan kunjungan yang baru masuk" action={<button onClick={() => goTo('request')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Lihat semua <ArrowUpRight className="ml-1 inline" size={15} /></button>}>
-          <RequestTable items={requests.slice(0, 4)} showActions />
-        </Panel>
-        <Panel title="Kunjungan mendatang" subtitle="Jadwal kunjungan yang telah disetujui">
-          <div className="divide-y divide-slate-100">
-            {upcoming.length ? upcoming.map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
-              <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600"><CalendarDays size={19} /></div>
-              <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
-            </div>) : <p className="px-5 py-10 text-center text-sm text-slate-400">Belum ada jadwal mendatang.</p>}
-          </div>
-        </Panel>
-      </div>
-    </>
-  }
-
-  function ListingPage({ type }) {
-    const isPending = type === 'request'
-    const items = isPending ? visibleRequests.filter(item => item.status === 'Pending') : visibleRequests.filter(item => item.status === 'Diterima' || item.status === 'Ditolak')
-    return <>
-      <div className="mb-6"><h2 className="text-2xl font-bold text-slate-900">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2><p className="mt-2 text-sm text-slate-500">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak, lengkap dengan kontaknya.'}</p></div>
-      <div className="mb-5"><SearchFilter /></div>
-      <Panel title={isPending ? 'Permintaan menunggu persetujuan' : 'Daftar tamu terkelola'} subtitle={`${items.length} data ditemukan`}>
-        <RequestTable items={items} showActions={isPending} showContact={!isPending} />
-      </Panel>
-    </>
-  }
-
-  function HistoryPage() {
-    const items = visibleRequests
-      .filter(item => item.status !== 'Pending')
-      .slice()
-      .sort((a, b) => {
-        const toValue = ({ date, time }) => new Date(`${date}T${time || '00:00'}`).getTime()
-        return toValue(b) - toValue(a)
-      })
-    return <>
-      <div className="mb-6"><h2 className="text-2xl font-bold text-slate-900">Riwayat Kunjungan</h2><p className="mt-2 text-sm text-slate-500">Semua permintaan yang sudah diterima atau ditolak.</p></div>
-      <div className="mb-5"><SearchFilter /></div>
-      <Panel title="Riwayat request" subtitle={`${items.length} data telah diproses`}><RequestTable items={items} /></Panel>
-    </>
-  }
-
   return (
-    <div className="min-h-screen bg-[#f5f7fb]">
+    <div className="min-h-screen bg-[#f5f7fb] dark:bg-slate-950">
       {mobileOpen && <button aria-label="Tutup menu" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" />}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101827] text-white transition-transform duration-300 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101827] text-white transition-transform duration-300 dark:border-r dark:border-slate-800 dark:bg-slate-900 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-[84px] items-center justify-between border-b border-white/10 px-6">
           <div className="flex items-center gap-3">
             <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-10 w-10 shrink-0 rounded-xl bg-white/95 object-contain p-0.5" />
@@ -584,42 +752,43 @@ function AdminApp({ onLogout, adminName, token }) {
       </aside>
 
       <main className="min-h-screen lg:ml-[260px]">
-        <header className="sticky top-0 z-30 flex h-[84px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-8">
+        <header className="sticky top-0 z-30 flex h-[84px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90 sm:px-8">
           <div className="flex items-center gap-3">
-            <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2 text-slate-600 lg:hidden"><Menu size={20} /></button>
-            <div><p className="text-xs text-slate-400">PeTa SKANIDA / Admin</p><h1 className="mt-1 font-bold text-slate-800">{pageTitle}</h1></div>
+            <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2 text-slate-600 dark:border-slate-700 dark:text-slate-300 lg:hidden"><Menu size={20} /></button>
+            <div><p className="text-xs text-slate-400 dark:text-slate-500">PeTa SKANIDA / Admin</p><h1 className="mt-1 font-bold text-slate-800 dark:text-slate-100">{pageTitle}</h1></div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400">Admin</p></div>
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-50 text-indigo-600"><UserRound size={19} /></div>
+            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+            <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400 dark:text-slate-500">Admin</p></div>
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><UserRound size={19} /></div>
           </div>
         </header>
 
         <div className="mx-auto max-w-[1600px] p-4 sm:p-8">
           {error && (
-            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
               <AlertCircle size={20} className="shrink-0" />
               <span>{error}</span>
-              <button onClick={fetchData} className="ml-auto shrink-0 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200">Coba lagi</button>
+              <button onClick={fetchData} className="ml-auto shrink-0 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200 dark:bg-rose-500/20 dark:text-rose-200 dark:hover:bg-rose-500/30">Coba lagi</button>
             </div>
           )}
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-24 text-slate-400 dark:text-slate-500">
               <Loader2 size={32} className="animate-spin text-indigo-400" />
               <p className="mt-4 text-sm">Memuat data...</p>
             </div>
           ) : (
             <>
-              {active === 'dashboard' && <Dashboard />}
-              {active === 'tamu' && <ListingPage type="tamu" />}
-              {active === 'request' && <ListingPage type="request" />}
-              {active === 'riwayat' && <HistoryPage />}
+              {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} onUpdateStatus={updateStatus} />}
+              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onUpdateStatus={updateStatus} />}
+              {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onUpdateStatus={updateStatus} />}
+              {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
             </>
           )}
-          <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
+          <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
         </div>
       </main>
-      {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-[calc(100%-40px)] items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl"><CheckCircle2 size={17} className="text-emerald-400" />{notice}</div>}
+      {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-[calc(100%-40px)] items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl dark:bg-slate-800 dark:ring-1 dark:ring-slate-700"><CheckCircle2 size={17} className="text-emerald-400" />{notice}</div>}
     </div>
   )
 }
@@ -627,10 +796,28 @@ function AdminApp({ onLogout, adminName, token }) {
 const TOKEN_KEY = 'peta-skanida.admin.token'
 
 function App() {
-  const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu'
+  const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu', 'tamu-success'
   const [adminName, setAdminName] = useState('')
   const [token, setToken] = useState('')
   const [restoring, setRestoring] = useState(true)
+  const [guestResult, setGuestResult] = useState(null)
+  const [theme, setTheme] = useState(getInitialTheme)
+
+  // Terapkan tema ke <html> dan simpan pilihan pengguna.
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.add('theme-transition')
+    root.classList.toggle('dark', theme === 'dark')
+    try {
+      window.localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // localStorage bisa diblokir; abaikan
+    }
+    const timer = window.setTimeout(() => root.classList.remove('theme-transition'), 300)
+    return () => window.clearTimeout(timer)
+  }, [theme])
+
+  const toggleTheme = () => setTheme(current => (current === 'dark' ? 'light' : 'dark'))
 
   // Pulihkan sesi admin dari token yang tersimpan di browser
   useEffect(() => {
@@ -677,20 +864,27 @@ function App() {
 
   if (restoring) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f5f7fb] text-slate-400">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f5f7fb] text-slate-400 dark:bg-slate-950 dark:text-slate-500">
         <Loader2 size={32} className="animate-spin text-indigo-400" />
         <p className="mt-4 text-sm">Memuat sesi...</p>
       </div>
     )
   }
 
-  if (role === null) return <LoginPage onSelect={setRole} />
-  if (role === 'admin-login') return <AdminLoginPage onSuccess={handleLoginSuccess} onBack={() => setRole(null)} />
-  if (role === 'tamu') return <GuestFormPage onBack={() => setRole(null)} onSubmit={form => {
-    window.alert(`Terima kasih, ${form.name}. Permintaan kunjungan Anda telah dikirim dan akan diverifikasi oleh admin.`)
-    setRole(null)
+  if (role === null) return <LoginPage onSelect={setRole} theme={theme} onToggleTheme={toggleTheme} />
+  if (role === 'admin-login') return <AdminLoginPage onSuccess={handleLoginSuccess} onBack={() => setRole(null)} theme={theme} onToggleTheme={toggleTheme} />
+  if (role === 'tamu') return <GuestFormPage theme={theme} onToggleTheme={toggleTheme} onBack={() => setRole(null)} onSubmit={data => {
+    setGuestResult(data)
+    setRole('tamu-success')
   }} />
-  return <AdminApp adminName={adminName} token={token} onLogout={handleLogout} />
+  if (role === 'tamu-success') return <GuestSuccessPage
+    data={guestResult}
+    theme={theme}
+    onToggleTheme={toggleTheme}
+    onAgain={() => { setGuestResult(null); setRole('tamu') }}
+    onBack={() => { setGuestResult(null); setRole(null) }}
+  />
+  return <AdminApp adminName={adminName} token={token} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
 }
 
 export default App
