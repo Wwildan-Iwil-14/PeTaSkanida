@@ -2,10 +2,68 @@
  * Klien REST untuk backend PETA SKANIDA.
  * Semua akses tulis (login, ajukan request, setujui/tolak) lewat backend,
  * sehingga service role key tidak pernah terekspos ke browser.
+ *
+ * Sesi admin memakai JWT Supabase Auth. Access token yang kedaluwarsa otomatis
+ * ditukar dengan yang baru memakai refresh token (lihat refreshSession).
  */
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '')
 
-async function request(path, { method = 'GET', body, token } = {}) {
+const TOKEN_KEY = 'peta-skanida.admin.token'
+const REFRESH_KEY = 'peta-skanida.admin.refresh'
+
+class ApiError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.status = status
+  }
+}
+
+// ---- Penyimpanan sesi (localStorage) ----
+
+function readStore(key) {
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeStore(key, value) {
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // localStorage bisa diblokir; abaikan
+  }
+}
+
+function removeStore(key) {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // localStorage bisa diblokir; abaikan
+  }
+}
+
+/** Simpan sesi admin hasil login / hasil refresh. */
+export function saveSession({ token, refreshToken }) {
+  if (token) writeStore(TOKEN_KEY, token)
+  if (refreshToken) writeStore(REFRESH_KEY, refreshToken)
+}
+
+/** Hapus sesi admin dari browser (dipakai saat keluar / sesi kedaluwarsa). */
+export function clearSession() {
+  removeStore(TOKEN_KEY)
+  removeStore(REFRESH_KEY)
+}
+
+/** Ambil access token yang tersimpan (null bila belum pernah login). */
+export function loadToken() {
+  return readStore(TOKEN_KEY)
+}
+
+// ---- Permintaan HTTP ----
+
+async function rawRequest(path, { method = 'GET', body, token } = {}) {
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
 
@@ -17,8 +75,9 @@ async function request(path, { method = 'GET', body, token } = {}) {
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch {
-    throw new Error(
+    throw new ApiError(
       `Tidak dapat terhubung ke backend (${BASE_URL}). Pastikan server backend berjalan.`,
+      0,
     )
   }
 
@@ -33,27 +92,80 @@ async function request(path, { method = 'GET', body, token } = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error || `Permintaan gagal (HTTP ${response.status}).`)
+    throw new ApiError(payload?.error || `Permintaan gagal (HTTP ${response.status}).`, response.status)
   }
 
   return payload
 }
 
+/**
+ * Tukar refresh token dengan access token baru.
+ * Mengembalikan token baru, atau null bila sesi sudah tidak berlaku
+ * (dalam hal ini sesi browser ikut dibersihkan).
+ */
+async function renewSession() {
+  const refreshToken = readStore(REFRESH_KEY)
+  if (!refreshToken) return null
+
+  try {
+    const data = await rawRequest('/auth/refresh', {
+      method: 'POST',
+      body: { refreshToken },
+    })
+    saveSession(data)
+    return data.token
+  } catch {
+    clearSession()
+    return null
+  }
+}
+
+/**
+ * Permintaan untuk endpoint yang butuh login admin.
+ * Jika token kedaluwarsa (401), sesi diperbarui sekali lalu dicoba ulang.
+ */
+async function authedRequest(path, opts = {}) {
+  try {
+    return await rawRequest(path, opts)
+  } catch (err) {
+    if (err.status !== 401 || !opts.token) throw err
+    const renewed = await renewSession()
+    if (!renewed) throw err
+    return rawRequest(path, { ...opts, token: renewed })
+  }
+}
+
+/**
+ * Token sesi dibaca dari penyimpanan setiap kali dipanggil, sehingga token
+ * hasil pembaruan otomatis dipakai pada permintaan berikutnya.
+ */
+const currentToken = () => loadToken() || undefined
+
 export const api = {
-  health: () => request('/health'),
+  health: () => rawRequest('/health'),
 
-  login: (username, password) =>
-    request('/auth/login', { method: 'POST', body: { username, password } }),
+  /** Login admin (email + password) → { token, refreshToken, admin }. */
+  login: (email, password) =>
+    rawRequest('/auth/login', { method: 'POST', body: { email, password } }),
 
-  me: (token) => request('/auth/me', { token }),
+  me: () => authedRequest('/auth/me', { token: currentToken() }),
 
-  listRequests: (token) => request('/requests', { token }),
+  /** Cabut sesi di server (refresh token tidak bisa dipakai lagi). */
+  logout: () =>
+    rawRequest('/auth/logout', {
+      method: 'POST',
+      body: { refreshToken: readStore(REFRESH_KEY) },
+      token: currentToken(),
+    }).catch(() => {}),
 
-  createRequest: (payload) => request('/requests', { method: 'POST', body: payload }),
+  listRequests: () => authedRequest('/requests', { token: currentToken() }),
 
-  approveRequest: (id, token) => request(`/requests/${id}/approve`, { method: 'POST', token }),
+  createRequest: payload => rawRequest('/requests', { method: 'POST', body: payload }),
 
-  rejectRequest: (id, token) => request(`/requests/${id}/reject`, { method: 'POST', token }),
+  approveRequest: id =>
+    authedRequest(`/requests/${id}/approve`, { method: 'POST', token: currentToken() }),
+
+  rejectRequest: id => authedRequest(`/requests/${id}/reject`, { method: 'POST', token: currentToken() }),
 }
 
 export { BASE_URL as API_BASE_URL }

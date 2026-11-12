@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api } from './lib/api'
+import { api, saveSession, clearSession, loadToken } from './lib/api'
 import { subscribeToRequests } from './lib/realtime'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
@@ -26,6 +26,7 @@ function getInitialTheme() {
   }
 }
 
+//pengaturan tema gelap terang
 function ThemeToggle({ theme, onToggle, className = '' }) {
   const isDark = theme === 'dark'
   return (
@@ -170,7 +171,7 @@ function LoginPage({ onSelect, theme, onToggleTheme }) {
 }
 
 function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -178,13 +179,15 @@ function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!username.trim()) { setError('Nama akun wajib diisi.'); return }
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) { setError('Email wajib diisi.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { setError('Format email tidak valid, contoh: admin@skanida.sch.id.'); return }
     if (!password.trim()) { setError('Password wajib diisi.'); return }
     setError('')
     setSubmitting(true)
     try {
-      const result = await api.login(username.trim(), password.trim())
-      onSuccess(result.admin.nama, result.token)
+      const result = await api.login(normalizedEmail, password.trim())
+      onSuccess(result)
     } catch (err) {
       setError('Gagal masuk: ' + (err.message || 'Terjadi kesalahan'))
     } finally {
@@ -222,18 +225,18 @@ function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><ShieldCheck size={22} /></div>
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Login Admin</h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Masukkan nama akun dan password untuk masuk ke dashboard.</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Masukkan email dan password untuk masuk ke dashboard.</p>
               </div>
             </div>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">Nama Akun</label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">Email</label>
                 <input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="Nama akun admin"
-                  autoComplete="username"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="admin@skanida.sch.id"
+                  autoComplete="email"
                   className={FIELD}
                 />
               </div>
@@ -655,7 +658,7 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
   </>
 }
 
-function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
+function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
   const [active, setActive] = useState('dashboard')
   const [requests, setRequests] = useState([])
   const [query, setQuery] = useState('')
@@ -670,7 +673,7 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
     setLoading(true)
     setError(null)
     try {
-      const { requests: rows } = await api.listRequests(token)
+      const { requests: rows } = await api.listRequests()
       setRequests((rows || []).map(row => mapRecord(row, row.status)))
     } catch (err) {
       setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
@@ -687,7 +690,7 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
     const unsubscribe = subscribeToRequests(() => fetchData())
 
     return unsubscribe
-  }, [token])
+  }, [])
 
   const visibleRequests = useMemo(() => requests.filter(item => {
     const matchesQuery = `${item.name} ${item.id} ${item.purpose}`.toLowerCase().includes(query.toLowerCase())
@@ -701,9 +704,9 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
 
     try {
       if (status === 'Diterima') {
-        await api.approveRequest(target.dbId, token)
+        await api.approveRequest(target.dbId)
       } else {
-        await api.rejectRequest(target.dbId, token)
+        await api.rejectRequest(target.dbId)
       }
 
       setNotice(`Request ${target.id} berhasil ${status === 'Diterima' ? 'disetujui' : 'ditolak'}.`)
@@ -793,12 +796,9 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
   )
 }
 
-const TOKEN_KEY = 'peta-skanida.admin.token'
-
 function App() {
   const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu', 'tamu-success'
   const [adminName, setAdminName] = useState('')
-  const [token, setToken] = useState('')
   const [restoring, setRestoring] = useState(true)
   const [guestResult, setGuestResult] = useState(null)
   const [theme, setTheme] = useState(getInitialTheme)
@@ -819,25 +819,24 @@ function App() {
 
   const toggleTheme = () => setTheme(current => (current === 'dark' ? 'light' : 'dark'))
 
-  // Pulihkan sesi admin dari token yang tersimpan di browser
+  // Pulihkan sesi admin dari token yang tersimpan di browser.
+  // api.me() otomatis memperbarui token yang kedaluwarsa memakai refresh token.
   useEffect(() => {
-    const savedToken = window.localStorage.getItem(TOKEN_KEY)
-    if (!savedToken) {
+    if (!loadToken()) {
       setRestoring(false)
       return
     }
 
     let active = true
     api
-      .me(savedToken)
+      .me()
       .then(({ admin }) => {
         if (!active) return
-        setToken(savedToken)
         setAdminName(admin.nama)
         setRole('admin')
       })
       .catch(() => {
-        window.localStorage.removeItem(TOKEN_KEY)
+        clearSession()
       })
       .finally(() => {
         if (active) setRestoring(false)
@@ -848,16 +847,15 @@ function App() {
     }
   }, [])
 
-  function handleLoginSuccess(nama, newToken) {
-    window.localStorage.setItem(TOKEN_KEY, newToken)
-    setToken(newToken)
-    setAdminName(nama)
+  function handleLoginSuccess(result) {
+    saveSession(result)
+    setAdminName(result.admin.nama)
     setRole('admin')
   }
 
   function handleLogout() {
-    window.localStorage.removeItem(TOKEN_KEY)
-    setToken('')
+    api.logout() // cabut sesi di Supabase Auth (fire-and-forget)
+    clearSession()
     setAdminName('')
     setRole(null)
   }
@@ -884,7 +882,7 @@ function App() {
     onAgain={() => { setGuestResult(null); setRole('tamu') }}
     onBack={() => { setGuestResult(null); setRole(null) }}
   />
-  return <AdminApp adminName={adminName} token={token} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+  return <AdminApp adminName={adminName} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
 }
 
 export default App

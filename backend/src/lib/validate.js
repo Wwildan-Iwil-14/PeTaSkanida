@@ -40,13 +40,15 @@ export function validateRequestPayload(body = {}) {
 }
 
 /**
- * Validasi kredensial admin sebelum diteruskan ke database.
+ * Validasi kredensial admin sebelum diteruskan ke Supabase Auth.
+ * Login admin memakai email (standar GoTrue), bukan username.
  */
 export function validateCredentials(body = {}) {
-  const username = text(body.username)
+  const email = text(body.email)
   const password = typeof body.password === 'string' ? body.password : ''
   const errors = []
-  if (!username) errors.push('Nama akun wajib diisi.')
+  if (!email) errors.push('Email wajib diisi.')
+  else if (!EMAIL_PATTERN.test(email)) errors.push('Format email tidak valid.')
   if (!password) errors.push('Password wajib diisi.')
-  return { username, password, errors }
+  return { email, password, errors }
 }

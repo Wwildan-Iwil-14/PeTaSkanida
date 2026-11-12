@@ -1,4 +1,4 @@
-﻿# PeTa SKANIDA — Database (Supabase)
+# PeTa SKANIDA — Database (Supabase)
 
 Folder ini berisi semua file **SQL** untuk membuat dan mengubah database di **Supabase**.
 Folder ini adalah **sumber kebenaran** (acuan utama) untuk struktur database.
@@ -94,7 +94,7 @@ Setelah itu lanjut ke panduan utama: [`../README.md`](../README.md).
 | `req_acc` | Permintaan yang **diterima** admin | Backend menulis; frontend membaca |
 | `req_reject` | Permintaan yang **ditolak** admin | Backend menulis; frontend membaca |
 | `riwayat` | Arsip semua permintaan yang sudah diproses | Backend menulis; frontend membaca |
-| `admins` | Akun admin (password di-hash bcrypt) | **Hanya** lewat fungsi `verify_admin` |
+| `admins` | Profil admin (nama, role) → dihubungkan ke `auth.users` | Hanya backend (service role); **login lewat Supabase Auth** |
 
 **Alur data:** tamu mengisi form → masuk `req_pending` → admin menerima (masuk `req_acc` + `riwayat`) atau menolak (masuk `req_reject` + `riwayat`). Data asli tetap ada di `req_pending`.
 
@@ -106,7 +106,7 @@ RLS (Row Level Security) adalah "penjaga pintu" database. Aturannya:
 
 - Pengunjung biasa (`anon`) hanya boleh **membaca** data. Ini dipakai frontend untuk update real-time.
 - Semua **penulisan** (tambah permintaan, terima/tolak) dilakukan **backend** memakai *service role key*.
-- Tabel `admins` **tidak punya** aturan akses langsung — hanya bisa dibaca lewat fungsi `verify_admin` yang aman.
+- Tabel `admins`: pengunjung `anon` dilarang mengakses langsung. Admin yang login hanya dapat membaca baris profil miliknya sendiri (`auth.uid() = user_id`), sedangkan backend membacanya memakai *service role key* saat proses autentikasi.
 
 Artinya, walaupun orang membuka kode frontend, mereka tidak bisa mengubah data langsung di database.
 
@@ -114,33 +114,39 @@ Artinya, walaupun orang membuka kode frontend, mereka tidak bisa mengubah data l
 
 ## 6. Mengganti Password Admin
 
-Akun default adalah `admin` / `admin123`. **Ganti setelah login pertama.**
+Autentikasi admin sekarang dikelola oleh **Supabase Auth (schema auth)**, bukan lagi disimpan di tabel SQL publik. Ada 2 cara mudah mengganti password:
 
-1. Buka **SQL Editor** di Supabase.
-2. Jalankan SQL ini (ganti `PASSWORD_BARU`):
+### Cara 1 — Lewat skrip CLI (paling cepat)
 
-```sql
-UPDATE public.admins
-SET password_hash = crypt('PASSWORD_BARU', gen_salt('bf'))
-WHERE username = 'admin';
+Dari folder utama atau folder `backend/`, jalankan perintah pembuat admin dengan email yang sama dan password baru:
+
+```bash
+npm run admin:create -- admin@skanida.sch.id PASSWORD_BARU "Administrator"
 ```
 
-3. Klik **Run**. Password langsung berubah.
+Skrip akan otomatis mendeteksi bahwa akun sudah ada di Supabase Auth dan memperbarui password-nya.
 
-> Password disimpan dalam bentuk hash (acak), bukan teks asli. Jadi aman.
+### Cara 2 — Lewat Dashboard Supabase
+
+1. Buka project Supabase kamu di browser.
+2. Masuk ke menu **Authentication > Users**.
+3. Temukan email admin, klik menu titik tiga (`...`), lalu pilih **Reset Password** atau ubah password secara manual.
 
 ---
 
 ## 7. Menambah Admin Baru
 
-Jalankan di SQL Editor (ganti nilainya):
+Untuk menambahkan admin baru, jalankan perintah dari terminal:
 
-```sql
-INSERT INTO public.admins (username, email, password_hash, nama)
-VALUES ('admin2', 'email@skanida.sch.id', crypt('passwordku', gen_salt('bf')), 'Nama Admin 2');
+```bash
+npm run admin:create -- email.admin@skanida.sch.id password123 "Nama Admin Baru"
 ```
 
-Admin baru bisa langsung login memakai `admin2` / `passwordku`.
+Skrip ini otomatis:
+1. Mendaftarkan akun di Supabase Auth (`auth.users`) dengan status langsung terkonfirmasi.
+2. Menambahkan baris profil di tabel `public.admins` yang terhubung ke `user_id` akun tersebut.
+
+Admin baru dapat langsung login di aplikasi frontend menggunakan email dan password tersebut.
 
 ---
 

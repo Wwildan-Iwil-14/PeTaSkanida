@@ -1,4 +1,4 @@
-﻿# PeTa SKANIDA — Panduan Lengkap (Untuk Pemula)
+# PeTa SKANIDA — Panduan Lengkap (Untuk Pemula)
 
 Aplikasi web untuk mengelola **permintaan kunjungan tamu** ke SKANIDA (SMKN 2 Kota Magelang).
 
@@ -163,8 +163,6 @@ PORT=3001
 SUPABASE_URL=https://PROJECT-URL-KAMU.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=TEMPEL-SERVICE-ROLE-KEY
 SUPABASE_ANON_KEY=TEMPEL-ANON-KEY
-AUTH_SECRET=ganti-dengan-kalimat-acak-panjang-bebas
-TOKEN_TTL_SECONDS=28800
 CORS_ORIGIN=http://localhost:5173
 ```
 
@@ -173,12 +171,23 @@ Cara mengisi:
 - `SUPABASE_URL` → **Project URL** dari Langkah 4.3.
 - `SUPABASE_SERVICE_ROLE_KEY` → **service_role key**.
 - `SUPABASE_ANON_KEY` → **anon key**.
-- `AUTH_SECRET` → tulis kalimat acak apa saja yang panjang (contoh: `rahasia-sekolah-skanida-2026-abc123xyz`).
 - Sisanya biarkan seperti contoh.
 
+> **Catatan:** Autentikasi admin sekarang memakai **Supabase Auth (schema auth / GoTrue)**, sehingga variabel `AUTH_SECRET` dan `TOKEN_TTL_SECONDS` tidak lagi dipakai.
+>
 > **Penting:** simpan file sebagai **UTF-8 (tanpa BOM)**. Jika muncul karakter aneh di awal file, hapus. Jangan menambahkan tanda kutip (`"`) di sekitar nilai.
 
-### 5.4 Jalankan server backend
+### 5.4 Buat akun admin (Supabase Auth)
+
+Jalankan perintah ini untuk membuat akun admin di Supabase Auth sekaligus membuat profilnya di tabel database:
+
+```bash
+npm run admin:create -- admin@skanida.sch.id admin123 "Administrator"
+```
+
+*(Kamu bisa mengganti `admin123` dengan password yang kamu inginkan)*
+
+### 5.5 Jalankan server backend
 
 ```bash
 npm run dev
@@ -192,7 +201,7 @@ Jika berhasil, akan muncul tulisan seperti:
 
 Biarkan terminal ini **tetap terbuka**. Backend harus terus berjalan selama aplikasi dipakai.
 
-### 5.5 Cek backend hidup
+### 5.6 Cek backend hidup
 
 Buka browser dan akses: <http://localhost:3001/api/health>
 
@@ -266,13 +275,15 @@ Halaman awal punya dua pilihan:
 - **Tamu** → mengisi form permintaan kunjungan.
 - **Admin / Pengelola** → login untuk mengelola permintaan.
 
-### Akun admin default
+### Akun admin
 
-| Username | Password |
+Login admin menggunakan **email** dan **password** yang dibuat di Langkah 5.4:
+
+| Email | Password |
 |---|---|
-| `admin` | `admin123` |
+| `admin@skanida.sch.id` | `admin123` *(atau password yang kamu buat)* |
 
-> 🔒 **Wajib ganti password** setelah login pertama. Caranya ada di [`database/README.md`](database/README.md) bagian "Ganti Password Admin".
+> 🔒 **Ganti password:** Kamu bisa memperbarui password kapan saja lewat `npm run admin:create -- admin@skanida.sch.id PASSWORD_BARU "Administrator"` atau lewat Supabase Dashboard (**Authentication > Users**).
 
 ---
 
@@ -337,7 +348,7 @@ Peta-skanida/
 | Backend: **"Invalid API key"** | Key salah / tertukar | Salin ulang anon & service_role key dengan benar |
 | Frontend: **"Tidak dapat terhubung ke backend"** | Backend belum jalan / URL salah | Pastikan `npm run dev` backend aktif dan `VITE_API_BASE_URL` benar |
 | Halaman frontend kosong / error Supabase | `frontend/.env` belum ada/benar | Buat & isi `frontend/.env` (Langkah 6.3), lalu restart `npm run dev` |
-| Login admin gagal | Tabel `admins` belum dibuat / password salah | Pastikan `schema.sql` sudah dijalankan; coba `admin` / `admin123` |
+| Login admin gagal | Akun admin belum dibuat / email atau password salah | Buat / reset akun lewat `npm run admin:create -- admin@skanida.sch.id password` |
 | Data tidak muncul | `schema.sql` belum dijalankan | Jalankan ulang `database/schema.sql` di Supabase SQL Editor |
 | Real-time tidak update | Realtime belum aktif | Jalankan migration `20261110000002_enable_realtime.sql` di Supabase |
 | Port sudah dipakai (`EADDRINUSE`) | Ada proses lain di port 3001/5173 | Tutup aplikasi lain, atau ubah `PORT` di `backend/.env` |
@@ -351,8 +362,8 @@ Peta-skanida/
 
 - **Jangan pernah commit** file `.env` ke GitHub (sudah otomatis diabaikan oleh `.gitignore`).
 - **Service role key** hanya untuk `backend/.env`. Jangan taruh di frontend.
-- **Ganti password admin default** `admin123` segera setelah login pertama.
-- Gunakan `AUTH_SECRET` yang panjang dan acak, jangan yang mudah ditebak.
+- **Password admin dikelola oleh Supabase Auth** (schema auth) dengan hash standar industri.
+- **Segera ganti password admin default** setelah akun dibuat.
 - Untuk pemakaian publik, jalankan backend di server (bukan laptop) dan gunakan HTTPS.
 
 ---
@@ -369,18 +380,21 @@ Dijalankan dari folder utama `Peta-skanida`:
 | `npm run dev:frontend` | Jalankan frontend saja |
 | `npm run build` | Membuat versi produksi frontend (folder `frontend/dist`) |
 | `npm run db:sync` | Menyalin file migration database ke folder backend |
+| `npm run admin:create -- <email> <pwd> [nama]` | Buat atau perbarui akun admin di Supabase Auth & profil database |
 
 ### Daftar endpoint API (untuk pengembang)
 
-| Method | Endpoint | Perlu login admin? |
-|---|---|---|
-| GET | `/api/health` | Tidak |
-| POST | `/api/auth/login` | Tidak |
-| GET | `/api/auth/me` | Ya |
-| POST | `/api/requests` | Tidak (form tamu) |
-| GET | `/api/requests` | Ya |
-| POST | `/api/requests/:id/approve` | Ya |
-| POST | `/api/requests/:id/reject` | Ya |
+| Method | Endpoint | Perlu login admin? | Keterangan |
+|---|---|---|---|
+| GET | `/api/health` | Tidak | Cek server hidup |
+| POST | `/api/auth/login` | Tidak | Login admin (email + password) → access & refresh token |
+| POST | `/api/auth/refresh` | Tidak | Tukar refresh token dengan access token baru |
+| POST | `/api/auth/logout` | Opsional | Cabut sesi admin di Supabase Auth |
+| GET | `/api/auth/me` | Ya | Cek profil admin dari token aktif |
+| POST | `/api/requests` | Tidak | Form pengajuan tamu |
+| GET | `/api/requests` | Ya | Ambil seluruh data request |
+| POST | `/api/requests/:id/approve` | Ya | Setujui permohonan |
+| POST | `/api/requests/:id/reject` | Ya | Tolak permohonan |
 
 Endpoint yang perlu login memakai header: `Authorization: Bearer <token>`.
 

@@ -1,12 +1,12 @@
-﻿-- ============================================
+-- ============================================
 -- PeTa SKANIDA - Complete Database Schema
 -- ============================================
 -- Run this file in Supabase SQL Editor to set up
 -- the database from scratch.
+--
+-- Autentikasi admin memakai Supabase Auth (schema auth / GoTrue):
+-- akun & password diurus Supabase, tabel admins hanya menyimpan profil.
 -- ============================================
-
--- Enable pgcrypto for password hashing
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ============================================
 -- TABLES
@@ -70,13 +70,16 @@ CREATE TABLE IF NOT EXISTS public.riwayat (
     REFERENCES public.req_pending(id) ON DELETE CASCADE
 );
 
--- admins: Daftar akun admin dengan password ter-hash (bcrypt)
+-- admins: Profil admin (nama, role) yang dihubungkan ke akun Supabase Auth.
+-- Login & password diurus Supabase Auth (auth.users), bukan tabel ini.
+-- Baris profil dibuat oleh skrip backend: npm run admin:create
 CREATE TABLE IF NOT EXISTS public.admins (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  username text UNIQUE NOT NULL,
+  user_id uuid UNIQUE REFERENCES auth.users (id) ON DELETE CASCADE,
+  username text UNIQUE,                -- arsip username lama (opsional)
   email text,
-  password_hash text NOT NULL,
   nama text NOT NULL,
+  role text NOT NULL DEFAULT 'admin',
   created_at timestamptz DEFAULT now()
 );
 
@@ -113,41 +116,12 @@ CREATE POLICY "select_req_reject" ON public.req_reject
 CREATE POLICY "select_riwayat" ON public.riwayat
   FOR SELECT TO anon, authenticated USING (true);
 
--- Tabel admins: TIDAK ada policy = semua akses langsung diblokir
--- Hanya bisa diakses melalui function verify_admin (SECURITY DEFINER)
--- yang dipanggil oleh backend.
-
--- ============================================
--- FUNCTIONS
--- ============================================
-
--- verify_admin: Cek kredensial admin (password ter-hash dengan bcrypt)
--- Mengembalikan nama admin jika valid, NULL jika tidak
-CREATE OR REPLACE FUNCTION public.verify_admin(p_username text, p_password text)
-RETURNS text
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-DECLARE
-  v_nama text;
-  v_hash text;
-BEGIN
-  SELECT nama, password_hash INTO v_nama, v_hash
-  FROM public.admins
-  WHERE username = p_username;
-
-  IF v_hash IS NULL THEN
-    RETURN NULL;
-  END IF;
-
-  IF v_hash = crypt(p_password, v_hash) THEN
-    RETURN v_nama;
-  END IF;
-
-  RETURN NULL;
-END;
-$$;
+-- Tabel admins: anon dilarang membaca. Admin yang login hanya boleh
+-- membaca baris profil miliknya sendiri (auth.uid() = user_id).
+DROP POLICY IF EXISTS "select_own_admin_profile" ON public.admins;
+CREATE POLICY "select_own_admin_profile" ON public.admins
+  FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
 -- ============================================
 -- REALTIME
@@ -163,8 +137,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.req_reject;
 -- DEFAULT ADMIN
 -- ============================================
 
--- Admin default: username 'admin', password 'admin123'
--- GANTI PASSWORD INI SETELAH LOGIN PERTAMA!
-INSERT INTO public.admins (username, email, password_hash, nama)
-VALUES ('admin', 'admin@skanida.sch.id', crypt('admin123', gen_salt('bf')), 'Administrator')
-ON CONFLICT (username) DO NOTHING;
+-- Akun admin TIDAK dibuat lewat SQL karena password diurus Supabase Auth.
+-- Setelah schema.sql dijalankan, buat akun admin dari folder backend:
+--
+--   npm run admin:create -- admin@skanida.sch.id admin123 "Administrator"
+--
+-- (butuh file backend/.env sudah diisi; lihat ../backend/README.md)
+-- GANTI password admin123 setelah login pertama!
