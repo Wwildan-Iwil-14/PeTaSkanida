@@ -42,6 +42,8 @@ npm install
 
 Cukup sekali, atau saat ada library baru.
 
+> Folder `node_modules` dihasilkan oleh `npm install` dan **tidak disimpan di Git**. Aman dihapus kapan saja; jalankan `npm install` lagi untuk membuatnya ulang. Jangan menyalin folder ini dari komputer lain (beda OS dapat menyebabkan error Rollup/esbuild).
+
 ---
 
 ## 3. Buat & Isi File `.env`

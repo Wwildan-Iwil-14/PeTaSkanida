@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS public.req_pending (
   keperluan text,
   tanggal date DEFAULT CURRENT_DATE,
   waktu text,
-  jumlah integer DEFAULT 1
+  jumlah integer DEFAULT 1,
+  dihubungi boolean NOT NULL DEFAULT false,
+  dihubungi_at timestamptz
 );
 
 -- req_acc: Request yang diterima admin (FK ke req_pending, CASCADE delete)

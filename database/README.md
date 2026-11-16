@@ -90,7 +90,7 @@ Setelah itu lanjut ke panduan utama: [`../README.md`](../README.md).
 
 | Tabel | Isi | Siapa yang mengakses |
 |---|---|---|
-| `req_pending` | Master — semua permintaan kunjungan yang masuk | Backend menulis; frontend membaca (real-time) |
+| `req_pending` | Master — semua permintaan kunjungan yang masuk, termasuk penanda `dihubungi` (sudah/belum dihubungi admin) | Backend menulis; frontend membaca (real-time) |
 | `req_acc` | Permintaan yang **diterima** admin | Backend menulis; frontend membaca |
 | `req_reject` | Permintaan yang **ditolak** admin | Backend menulis; frontend membaca |
 | `riwayat` | Arsip semua permintaan yang sudah diproses | Backend menulis; frontend membaca |

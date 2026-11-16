@@ -166,6 +166,14 @@ export const api = {
     authedRequest(`/requests/${id}/approve`, { method: 'POST', token: currentToken() }),
 
   rejectRequest: id => authedRequest(`/requests/${id}/reject`, { method: 'POST', token: currentToken() }),
+
+  /** Tandai tamu sudah (true) / belum (false) dihubungi. */
+  setContacted: (id, dihubungi) =>
+    authedRequest(`/requests/${id}/contacted`, {
+      method: 'PATCH',
+      body: { dihubungi },
+      token: currentToken(),
+    }),
 }
 
 export { BASE_URL as API_BASE_URL }
