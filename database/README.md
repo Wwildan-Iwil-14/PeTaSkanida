@@ -3,7 +3,7 @@
 Folder ini berisi semua file **SQL** untuk membuat dan mengubah database di **Supabase**.
 Folder ini adalah **sumber kebenaran** (acuan utama) untuk struktur database.
 
-> **Database itu apa?** Tempat menyimpan data (permintaan kunjungan, akun admin, riwayat). Di projek ini database memakai **Supabase**, layanan database online gratis.
+> **Database itu apa?** Tempat menyimpan data, misalnya permintaan kunjungan, akun admin, dan riwayat. Di projek ini database memakai **Supabase**, layanan database online gratis.
 
 ---
 
@@ -32,14 +32,14 @@ database/
 
 - **`schema.sql`** → jalankan sekali saat pertama kali membuat database.
 - **`seed.sql`** → data contoh untuk uji coba (boleh dilewati).
-- **`migrations/`** → file perubahan kecil (mis. menambah kolom). Untuk database yang sudah lama berjalan.
+- **`migrations/`** → file perubahan kecil (misalnya menambah kolom). Untuk database yang sudah lama berjalan.
 
 ---
 
 ## 2. Database Sudah Ada?
 
 - **Belum punya project Supabase?** Ikuti [bagian 3](#3-membuat-database-baru-dari-nol).
-- **Sudah punya & `schema.sql` sudah pernah dijalankan?** Kamu hanya perlu mengecek apakah ada file baru di `migrations/` yang belum dijalankan. Lihat [bagian 8](#8-mengubah-struktur-migration).
+- **Sudah punya dan `schema.sql` sudah pernah dijalankan?** Kamu hanya perlu mengecek apakah ada file baru di `migrations/` yang belum dijalankan. Lihat [bagian 8](#8-mengubah-struktur-migration).
 
 ---
 
@@ -47,28 +47,28 @@ database/
 
 ### Langkah 1 — Buat project Supabase
 
-1. Buka <https://supabase.com> dan login/daftar (gratis).
+1. Buka <https://supabase.com>, lalu login atau daftar (gratis).
 2. Klik **New Project**.
 3. Isi:
-   - **Name**: bebas, mis. `peta-skanida`
-   - **Database Password**: buat password kuat (simpan!)
-   - **Region**: pilih terdekat, mis. **Southeast Asia (Singapore)**
-4. Klik **Create new project** dan tunggu sampai status **Active** (beberapa menit).
+   - **Name**: bebas, misalnya `peta-skanida`
+   - **Database Password**: buat password yang kuat (simpan baik-baik!)
+   - **Region**: pilih yang terdekat, misalnya **Southeast Asia (Singapore)**
+4. Klik **Create new project** dan tunggu sampai statusnya **Active** (biasanya beberapa menit).
 
 ### Langkah 2 — Jalankan `schema.sql`
 
 1. Di dashboard project, buka **SQL Editor** (sidebar kiri).
 2. Klik **New query**.
-3. Buka file `database/schema.sql` di komputer, **salin semua isinya**.
-4. Tempel ke SQL Editor.
+3. Buka file `database/schema.sql` di komputer, lalu **salin semua isinya**.
+4. Tempel isinya ke SQL Editor.
 5. Klik **Run** (Ctrl+Enter).
-6. Pastikan muncul pesan sukses, tanpa error merah.
+6. Pastikan muncul pesan sukses, tanpa error berwarna merah.
 
 Selesai. Semua tabel, aturan keamanan, fungsi login, real-time, dan akun admin default sudah terbuat.
 
 ### Langkah 3 — (Opsional) Isi data contoh
 
-Ulangi cara di atas, tetapi salin isi `database/seed.sql`. Ini menambahkan beberapa contoh permintaan kunjungan untuk latihan. Aman dijalankan berulang.
+Ulangi cara yang sama, tetapi salin isi `database/seed.sql`. Ini akan menambahkan beberapa contoh permintaan kunjungan untuk latihan. Aman dijalankan berulang kali.
 
 ### Langkah 4 — Ambil kunci untuk backend & frontend
 
@@ -94,9 +94,9 @@ Setelah itu lanjut ke panduan utama: [`../README.md`](../README.md).
 | `req_acc` | Permintaan yang **diterima** admin | Backend menulis; frontend membaca |
 | `req_reject` | Permintaan yang **ditolak** admin | Backend menulis; frontend membaca |
 | `riwayat` | Arsip semua permintaan yang sudah diproses | Backend menulis; frontend membaca |
-| `admins` | Profil admin (nama, role) → dihubungkan ke `auth.users` | Hanya backend (service role); **login lewat Supabase Auth** |
+| `admins` | Profil admin (nama, role) → terhubung ke `auth.users` | Hanya backend (service role); **login lewat Supabase Auth** |
 
-**Alur data:** tamu mengisi form → masuk `req_pending` → admin menerima (masuk `req_acc` + `riwayat`) atau menolak (masuk `req_reject` + `riwayat`). Data asli tetap ada di `req_pending`.
+**Alur data:** tamu mengisi form → masuk `req_pending` → admin menerima (masuk `req_acc` + `riwayat`) atau menolak (masuk `req_reject` + `riwayat`). Data asli tetap tersimpan di `req_pending`.
 
 ---
 
@@ -105,8 +105,8 @@ Setelah itu lanjut ke panduan utama: [`../README.md`](../README.md).
 RLS (Row Level Security) adalah "penjaga pintu" database. Aturannya:
 
 - Pengunjung biasa (`anon`) hanya boleh **membaca** data. Ini dipakai frontend untuk update real-time.
-- Semua **penulisan** (tambah permintaan, terima/tolak) dilakukan **backend** memakai *service role key*.
-- Tabel `admins`: pengunjung `anon` dilarang mengakses langsung. Admin yang login hanya dapat membaca baris profil miliknya sendiri (`auth.uid() = user_id`), sedangkan backend membacanya memakai *service role key* saat proses autentikasi.
+- Semua **penulisan** (tambah permintaan, terima, tolak) dilakukan oleh **backend** dengan *service role key*.
+- Tabel `admins`: pengunjung `anon` dilarang mengakses langsung. Admin yang login hanya boleh membaca baris profil miliknya sendiri (`auth.uid() = user_id`). Backend membacanya dengan *service role key* saat proses autentikasi.
 
 Artinya, walaupun orang membuka kode frontend, mereka tidak bisa mengubah data langsung di database.
 
@@ -114,7 +114,7 @@ Artinya, walaupun orang membuka kode frontend, mereka tidak bisa mengubah data l
 
 ## 6. Mengganti Password Admin
 
-Autentikasi admin sekarang dikelola oleh **Supabase Auth (schema auth)**, bukan lagi disimpan di tabel SQL publik. Ada 2 cara mudah mengganti password:
+Autentikasi admin dikelola oleh **Supabase Auth (schema auth)**, bukan lagi disimpan di tabel SQL publik. Ada 2 cara mudah mengganti password:
 
 ### Cara 1 — Lewat skrip CLI (paling cepat)
 
@@ -130,7 +130,7 @@ Skrip akan otomatis mendeteksi bahwa akun sudah ada di Supabase Auth dan memperb
 
 1. Buka project Supabase kamu di browser.
 2. Masuk ke menu **Authentication > Users**.
-3. Temukan email admin, klik menu titik tiga (`...`), lalu pilih **Reset Password** atau ubah password secara manual.
+3. Cari email admin, klik menu titik tiga (`...`), lalu pilih **Reset Password** atau ubah password secara manual.
 
 ---
 
@@ -146,13 +146,13 @@ Skrip ini otomatis:
 1. Mendaftarkan akun di Supabase Auth (`auth.users`) dengan status langsung terkonfirmasi.
 2. Menambahkan baris profil di tabel `public.admins` yang terhubung ke `user_id` akun tersebut.
 
-Admin baru dapat langsung login di aplikasi frontend menggunakan email dan password tersebut.
+Admin baru bisa langsung login di aplikasi frontend menggunakan email dan password tersebut.
 
 ---
 
 ## 8. Mengubah Struktur (Migration)
 
-Jika perlu menambah kolom/tabel baru:
+Jika perlu menambah kolom atau tabel baru:
 
 ### Langkah 1 — Buat file migration
 
@@ -175,22 +175,22 @@ ALTER TABLE public.req_pending
 
 ### Langkah 3 — Jalankan
 
-- Salin isi file ke **SQL Editor** Supabase lalu **Run**, atau
+- Salin isi file ke **SQL Editor** Supabase, lalu **Run**, atau
 - Lewat Supabase CLI (lihat di bawah).
 
 ### Langkah 4 — Perbarui `schema.sql`
 
-Tambahkan perubahan yang sama ke `schema.sql` supaya instalasi baru tetap lengkap.
+Tambahkan perubahan yang sama ke `schema.sql`, supaya instalasi baru tetap lengkap.
 
 ### Menjalankan lewat Supabase CLI (opsional)
 
 ```bash
 # dari folder backend
-npm run db:sync     # salin database/migrations -> backend/supabase/migrations
-supabase db push    # kirim migration ke Supabase (butuh Supabase CLI terpasang & login)
+npm run db:sync     # menyalin database/migrations -> backend/supabase/migrations
+supabase db push    # mengirim migration ke Supabase (butuh Supabase CLI terpasang & login)
 ```
 
-> Jika belum punya Supabase CLI, cara termudah adalah menyalin SQL ke **SQL Editor** secara manual.
+> Jika belum punya Supabase CLI, cara paling mudah adalah menyalin SQL ke **SQL Editor** secara manual.
 
 ---
 
@@ -198,8 +198,8 @@ supabase db push    # kirim migration ke Supabase (butuh Supabase CLI terpasang 
 
 | Gejala | Penyebab | Solusi |
 |---|---|---|
-| Error saat Run `schema.sql`: "already exists" | Objek sudah ada | Wajar pada sebagian perintah; `schema.sql` memakai `IF NOT EXISTS` untuk tabel |
-| Error `relation "supabase_realtime" does not exist` | Publication realtime belum ada | Abaikan/buat lewat menu **Database → Replication**, atau jalankan migration realtime setelah project aktif |
+| Error saat Run `schema.sql`: "already exists" | Objek sudah ada | Wajar pada sebagian perintah; `schema.sql` sudah memakai `IF NOT EXISTS` untuk tabel |
+| Error `relation "supabase_realtime" does not exist` | Publication realtime belum ada | Abaikan atau buat lewat menu **Database → Replication**, atau jalankan migration realtime setelah project aktif |
 | Login admin selalu gagal | Tabel `admins` kosong | Jalankan bagian DEFAULT ADMIN di `schema.sql`, atau tambah admin (bagian 7) |
 | Frontend error "Invalid API key" | Key salah | Ambil ulang anon key dari Project Settings → API |
 | Backend tidak bisa menulis data | Memakai anon key, bukan service role | Isi `SUPABASE_SERVICE_ROLE_KEY` di `backend/.env` |
