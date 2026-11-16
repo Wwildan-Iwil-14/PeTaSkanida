@@ -71,6 +71,8 @@ router.get(
 
     const requests = (pendingRes.data || []).map(row => ({
       ...row,
+      dihubungi: Boolean(row.dihubungi),
+      dihubungi_at: row.dihubungi_at || null,
       status: acceptedIds.has(row.id)
         ? 'Diterima'
         : rejectedIds.has(row.id)
@@ -129,6 +131,44 @@ router.post(
     }
 
     res.json({ request: { ...record, status: 'Ditolak' } })
+  }),
+)
+
+/**
+ * PATCH /api/requests/:id/contacted
+ * Admin menandai tamu sudah / belum dihubungi.
+ */
+router.patch(
+  '/:id/contacted',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id)
+    const { dihubungi } = req.body || {}
+
+    if (typeof dihubungi !== 'boolean') {
+      throw httpError(422, 'Nilai "dihubungi" harus berupa boolean (true / false).')
+    }
+
+    const { data, error } = await supabase
+      .from('req_pending')
+      .update({
+        dihubungi,
+        dihubungi_at: dihubungi ? new Date().toISOString() : null,
+      })
+      .eq('id', id)
+      .select('id, dihubungi, dihubungi_at')
+      .maybeSingle()
+
+    if (error) throw httpError(502, `Gagal memperbarui status kontak: ${error.message}`)
+    if (!data) throw httpError(404, 'Request tidak ditemukan.')
+
+    res.json({
+      request: {
+        id: data.id,
+        dihubungi: Boolean(data.dihubungi),
+        dihubungi_at: data.dihubungi_at || null,
+      },
+    })
   }),
 )
 

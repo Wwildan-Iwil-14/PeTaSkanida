@@ -17,12 +17,32 @@ export function createApp() {
         }
         return callback(null, false)
       },
-      methods: ['GET', 'POST', 'OPTIONS'],
+      methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
     }),
   )
 
   app.use(express.json({ limit: '100kb' }))
+
+  // Halaman info sederhana saat backend dibuka langsung di browser.
+  app.get('/', (req, res) => {
+    res.json({
+      service: 'PeTa SKANIDA API',
+      status: 'ok',
+      message: 'Backend berjalan dengan baik. Ini adalah server API, bukan tampilan aplikasi.',
+      frontend: 'Buka http://localhost:5173 untuk menggunakan aplikasi.',
+      endpoints: {
+        health: 'GET /api/health',
+        login: 'POST /api/auth/login',
+        me: 'GET /api/auth/me',
+        listRequests: 'GET /api/requests',
+        approve: 'POST /api/requests/:id/approve',
+        reject: 'POST /api/requests/:id/reject',
+        contacted: 'PATCH /api/requests/:id/contacted',
+      },
+    })
+  })
+
   app.use('/api', routes)
 
   app.use(notFoundHandler)

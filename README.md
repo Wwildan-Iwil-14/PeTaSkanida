@@ -289,7 +289,7 @@ Login admin menggunakan **email** dan **password** yang dibuat di Langkah 5.4:
 
 ## 8. Menjalankan Ulang di Lain Hari
 
-Kamu **tidak perlu** mengulang langkah database dan `npm install` setiap hari.
+Kamu **tidak perlu** mengulang langkah database dan `npm install` setiap hari — asalkan folder `node_modules` belum dihapus.
 
 ### Cara mudah (satu terminal, dari folder utama)
 
@@ -336,6 +336,13 @@ Peta-skanida/
 | `backend/` | Server yang menghubungkan tampilan ke database | [backend/README.md](backend/README.md) |
 | `database/` | Struktur & aturan database (dijalankan di Supabase) | [database/README.md](database/README.md) |
 
+> **Tentang `node_modules`:** folder `node_modules` (di root, `frontend/`, dan `backend/`) **bukan kode sumber** dan tidak disimpan di Git. Isinya library yang diunduh otomatis oleh npm dari `package.json` + `package-lock.json`.
+>
+> - **Aman dihapus kapan saja** untuk menghemat ruang atau membersihkan instalasi rusak.
+> - Setelah dihapus, jalankan `npm run install:all` dari folder utama sebelum menjalankan aplikasi.
+> - **Jangan menyalin** folder `node_modules` dari komputer lain, apalagi beda sistem operasi — bisa muncul error seperti `Cannot find module @rollup/rollup-linux-x64-gnu` atau `You installed esbuild for another platform`.
+> - Folder ini sudah otomatis diabaikan `.gitignore`, jadi tidak akan ikut ter-commit.
+
 ---
 
 ## 10. Pemecahan Masalah (Troubleshooting)
@@ -344,6 +351,8 @@ Peta-skanida/
 |---|---|---|
 | `node: command not found` | Node.js belum terpasang | Install dari <https://nodejs.org>, buka ulang terminal |
 | `npm install` gagal | Koneksi internet / cache rusak | Coba lagi; jika perlu `npm cache clean --force` lalu `npm install` |
+| Error `Cannot find module @rollup/...` / `installed esbuild for another platform` | Folder `node_modules` disalin dari komputer/OS lain | Hapus semua `node_modules` (root, `frontend/`, `backend/`), lalu `npm run install:all` |
+| Aplikasi tidak mau jalan setelah `node_modules` dihapus | Library belum dipasang ulang | Jalankan `npm run install:all` |
 | Backend: **"Konfigurasi backend belum lengkap"** | `backend/.env` belum diisi | Isi `SUPABASE_URL` dan key sesuai Langkah 5.3 |
 | Backend: **"Invalid API key"** | Key salah / tertukar | Salin ulang anon & service_role key dengan benar |
 | Frontend: **"Tidak dapat terhubung ke backend"** | Backend belum jalan / URL salah | Pastikan `npm run dev` backend aktif dan `VITE_API_BASE_URL` benar |
@@ -382,10 +391,13 @@ Dijalankan dari folder utama `Peta-skanida`:
 | `npm run db:sync` | Menyalin file migration database ke folder backend |
 | `npm run admin:create -- <email> <pwd> [nama]` | Buat atau perbarui akun admin di Supabase Auth & profil database |
 
+> Setelah folder `node_modules` dihapus, jalankan `npm run install:all` terlebih dahulu sebelum `npm run dev`.
+
 ### Daftar endpoint API (untuk pengembang)
 
 | Method | Endpoint | Perlu login admin? | Keterangan |
 |---|---|---|---|
+| GET | `/` | Tidak | Info bahwa backend berjalan (bukan tampilan aplikasi) |
 | GET | `/api/health` | Tidak | Cek server hidup |
 | POST | `/api/auth/login` | Tidak | Login admin (email + password) → access & refresh token |
 | POST | `/api/auth/refresh` | Tidak | Tukar refresh token dengan access token baru |
@@ -395,6 +407,7 @@ Dijalankan dari folder utama `Peta-skanida`:
 | GET | `/api/requests` | Ya | Ambil seluruh data request |
 | POST | `/api/requests/:id/approve` | Ya | Setujui permohonan |
 | POST | `/api/requests/:id/reject` | Ya | Tolak permohonan |
+| PATCH | `/api/requests/:id/contacted` | Ya | Tandai tamu sudah/belum dihubungi (`{ "dihubungi": true }`) |
 
 Endpoint yang perlu login memakai header: `Authorization: Bearer <token>`.
 
