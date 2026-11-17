@@ -1,0 +1,16 @@
+{
+  "name": "peta-skanida",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PETA SKANIDA - Sistem Pengelolaan Tamu Kunjungan (frontend, backend, database terpisah)",
+  "type": "module",
+  "scripts": {
+    "install:all": "npm --prefix frontend install && npm --prefix backend install",
+    "dev": "node scripts/dev.js",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build": "npm --prefix frontend run build",
+    "db:sync": "npm --prefix backend run db:sync",
+    "admin:create": "npm --prefix backend run admin:create --"
+  }
+}
