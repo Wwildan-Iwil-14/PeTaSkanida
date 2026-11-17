@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api } from './lib/api'
+import { api, saveSession, clearSession, loadToken } from './lib/api'
 import { subscribeToRequests } from './lib/realtime'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
   Search, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
   ArrowUpRight, ChevronRight, UserRound, Filter, ShieldCheck,
   CalendarCheck, Eye, EyeOff, MessageCircle,
-  Loader2, AlertCircle, Moon, Sun, Copy, Check
+  Loader2, AlertCircle, Moon, Sun, Copy, Check,
+  CircleDashed, BadgeCheck, ArrowRight
 } from 'lucide-react'
 
 const THEME_KEY = 'peta-skanida.theme'
@@ -26,6 +27,7 @@ function getInitialTheme() {
   }
 }
 
+//pengaturan tema gelap terang
 function ThemeToggle({ theme, onToggle, className = '' }) {
   const isDark = theme === 'dark'
   return (
@@ -72,6 +74,8 @@ function mapRecord(r, status) {
     time: r.waktu || '',
     phone: r.no_hp || '-',
     people: r.jumlah || 1,
+    contacted: Boolean(r.dihubungi),
+    contactedAt: r.dihubungi_at || null,
     status,
   }
 }
@@ -86,9 +90,21 @@ function Status({ value }) {
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styles[value]}`}><Icon size={13} />{value}</span>
 }
 
-function StatCard({ title, value, note, icon: Icon, tint }) {
+function ContactBadge({ contacted }) {
+  const tone = contacted
+    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30'
+    : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30'
+  const Icon = contacted ? BadgeCheck : CircleDashed
   return (
-    <article className={`${CARD} p-5`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${tone}`}>
+      <Icon size={13} />{contacted ? 'Sudah dihubungi' : 'Belum dihubungi'}
+    </span>
+  )
+}
+
+function StatCard({ title, value, note, icon: Icon, tint, onClick }) {
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
@@ -97,8 +113,27 @@ function StatCard({ title, value, note, icon: Icon, tint }) {
         </div>
         <div className={`rounded-xl p-3 ${tint}`}><Icon size={21} /></div>
       </div>
-    </article>
+      {onClick && (
+        <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-slate-400 transition group-hover:text-indigo-600 dark:text-slate-500 dark:group-hover:text-indigo-400">
+          Lihat detail <ArrowRight size={13} className="transition group-hover:translate-x-0.5" />
+        </span>
+      )}
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${CARD} group p-5 text-left transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:hover:border-indigo-500/50`}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return <article className={`${CARD} p-5`}>{content}</article>
 }
 
 function ThemeToggleCorner({ theme, onToggleTheme }) {
@@ -170,7 +205,7 @@ function LoginPage({ onSelect, theme, onToggleTheme }) {
 }
 
 function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -178,13 +213,15 @@ function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!username.trim()) { setError('Nama akun wajib diisi.'); return }
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) { setError('Email wajib diisi.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { setError('Format email tidak valid, contoh: admin@skanida.sch.id.'); return }
     if (!password.trim()) { setError('Password wajib diisi.'); return }
     setError('')
     setSubmitting(true)
     try {
-      const result = await api.login(username.trim(), password.trim())
-      onSuccess(result.admin.nama, result.token)
+      const result = await api.login(normalizedEmail, password.trim())
+      onSuccess(result)
     } catch (err) {
       setError('Gagal masuk: ' + (err.message || 'Terjadi kesalahan'))
     } finally {
@@ -222,18 +259,18 @@ function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><ShieldCheck size={22} /></div>
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Login Admin</h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Masukkan nama akun dan password untuk masuk ke dashboard.</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Masukkan email dan password untuk masuk ke dashboard.</p>
               </div>
             </div>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">Nama Akun</label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">Email</label>
                 <input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="Nama akun admin"
-                  autoComplete="username"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="admin@skanida.sch.id"
+                  autoComplete="email"
                   className={FIELD}
                 />
               </div>
@@ -498,7 +535,7 @@ function Panel({ title, subtitle, action, children }) {
   )
 }
 
-function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus }) {
+function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus, onToggleContacted }) {
   if (!items.length) {
     return <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data yang cocok.</div>
   }
@@ -532,9 +569,33 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
               <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.people} orang</td>
               <td className="px-6 py-4"><Status value={item.status} /></td>
               {showContact && <td className="px-6 py-4">
-                <a href={waLink(item.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">
-                  <MessageCircle size={14} /> Hubungi
-                </a>
+                <div className="flex flex-col items-start gap-2">
+                  <ContactBadge contacted={item.contacted} />
+                  {item.contacted && item.contactedAt && (
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {new Date(item.contactedAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a href={waLink(item.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">
+                      <MessageCircle size={14} /> Hubungi
+                    </a>
+                    {onToggleContacted && (
+                      <button
+                        type="button"
+                        onClick={() => onToggleContacted(item.id, !item.contacted)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                          item.contacted
+                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                            : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20'
+                        }`}
+                      >
+                        {item.contacted ? <CircleDashed size={14} /> : <BadgeCheck size={14} />}
+                        {item.contacted ? 'Tandai belum' : 'Tandai sudah'}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </td>}
               {showActions && <td className="px-6 py-4">
                 {item.status === 'Pending' ? (
@@ -552,7 +613,7 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   )
 }
 
-function SearchFilter({ query, onQueryChange, filter, onFilterChange }) {
+function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="relative flex-1">
@@ -566,6 +627,19 @@ function SearchFilter({ query, onQueryChange, filter, onFilterChange }) {
           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
         />
       </div>
+      {showContactFilter && (
+        <div className="relative">
+          <MessageCircle className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <select
+            value={contactFilter}
+            onChange={e => onContactFilterChange(e.target.value)}
+            aria-label="Filter status kontak"
+            className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:focus:border-indigo-500 sm:w-48"
+          >
+            <option value="Semua">Semua kontak</option><option value="Sudah">Sudah dihubungi</option><option value="Belum">Belum dihubungi</option>
+          </select>
+        </div>
+      )}
       <div className="relative">
         <Filter className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
         <select
@@ -581,7 +655,7 @@ function SearchFilter({ query, onQueryChange, filter, onFilterChange }) {
   )
 }
 
-function Dashboard({ requests, adminName, onGoTo, onUpdateStatus }) {
+function Dashboard({ requests, adminName, onGoTo }) {
   const pending = requests.filter(item => item.status === 'Pending')
   const accepted = requests.filter(item => item.status === 'Diterima')
   const rejected = requests.filter(item => item.status === 'Ditolak')
@@ -592,17 +666,17 @@ function Dashboard({ requests, adminName, onGoTo, onUpdateStatus }) {
     <div className="mb-7">
       <p className="text-sm text-slate-500 dark:text-slate-400">Selamat datang kembali, {adminName || 'Admin'} 👋</p>
       <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Ringkasan aktivitas</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Pantau permintaan dan jadwal kunjungan dalam satu tempat.</p>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Pantau permintaan dan jadwal kunjungan dalam satu tempat. Dashboard hanya menampilkan informasi — persetujuan dilakukan di menu Daftar Request.</p>
     </div>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard title="Total Request" value={requests.length} note="Seluruh permintaan masuk" icon={ClipboardList} tint="bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300" />
-      <StatCard title="Menunggu" value={pending.length} note="Perlu tindakan admin" icon={Hourglass} tint="bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300" />
-      <StatCard title="Diterima" value={accepted.length} note="Permintaan disetujui" icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300" />
-      <StatCard title="Ditolak" value={rejected.length} note="Permintaan tidak disetujui" icon={XCircle} tint="bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300" />
+      <StatCard title="Menunggu" value={pending.length} note="Klik untuk membuka daftar request" icon={Hourglass} tint="bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300" onClick={() => onGoTo('request')} />
+      <StatCard title="Diterima" value={accepted.length} note="Klik untuk membuka kelola tamu" icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300" onClick={() => onGoTo('tamu', 'Diterima')} />
+      <StatCard title="Ditolak" value={rejected.length} note="Klik untuk membuka kelola tamu" icon={XCircle} tint="bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300" onClick={() => onGoTo('tamu', 'Ditolak')} />
     </div>
-    <div className="mt-6 grid gap-6 2xl:grid-cols-[1.5fr_1fr]">
+    <div className="mt-6 space-y-6">
       <Panel title="Request terbaru" subtitle="Permintaan kunjungan yang baru masuk" action={<button onClick={() => onGoTo('request')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Lihat semua <ArrowUpRight className="ml-1 inline" size={15} /></button>}>
-        <RequestTable items={requests.slice(0, 4)} showActions onUpdateStatus={onUpdateStatus} />
+        <RequestTable items={requests.slice(0, 4)} />
       </Panel>
       <Panel title="Kunjungan mendatang" subtitle="Jadwal kunjungan yang telah disetujui">
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -616,21 +690,39 @@ function Dashboard({ requests, adminName, onGoTo, onUpdateStatus }) {
   </>
 }
 
-function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, onUpdateStatus }) {
+function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted }) {
   const isPending = type === 'request'
-  const items = isPending
+  const byStatus = isPending
     ? visibleRequests.filter(item => item.status === 'Pending')
     : visibleRequests.filter(item => item.status === 'Diterima' || item.status === 'Ditolak')
+  const items = isPending
+    ? byStatus
+    : byStatus.filter(item => contactFilter === 'Semua' || (contactFilter === 'Sudah' ? item.contacted : !item.contacted))
+  const contactedCount = byStatus.filter(item => item.contacted).length
+
   return <>
     <div className="mb-6">
       <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak, lengkap dengan kontaknya.'}</p>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak, lengkap dengan kontaknya. Badge hijau menandai tamu yang sudah dihubungi, badge kuning berarti belum dihubungi.'}</p>
     </div>
     <div className="mb-5">
-      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} />
+      <SearchFilter
+        query={query}
+        onQueryChange={onQueryChange}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        showContactFilter={!isPending}
+        contactFilter={contactFilter}
+        onContactFilterChange={onContactFilterChange}
+      />
     </div>
-    <Panel title={isPending ? 'Permintaan menunggu persetujuan' : 'Daftar tamu terkelola'} subtitle={`${items.length} data ditemukan`}>
-      <RequestTable items={items} showActions={isPending} showContact={!isPending} onUpdateStatus={onUpdateStatus} />
+    <Panel
+      title={isPending ? 'Permintaan menunggu persetujuan' : 'Daftar tamu terkelola'}
+      subtitle={isPending
+        ? `${items.length} data ditemukan`
+        : `${items.length} data · ${contactedCount} sudah dihubungi · ${byStatus.length - contactedCount} belum dihubungi`}
+    >
+      <RequestTable items={items} showActions={isPending} showContact={!isPending} onUpdateStatus={onUpdateStatus} onToggleContacted={onToggleContacted} />
     </Panel>
   </>
 }
@@ -655,11 +747,12 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
   </>
 }
 
-function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
+function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
   const [active, setActive] = useState('dashboard')
   const [requests, setRequests] = useState([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Semua')
+  const [contactFilter, setContactFilter] = useState('Semua')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
@@ -670,7 +763,7 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
     setLoading(true)
     setError(null)
     try {
-      const { requests: rows } = await api.listRequests(token)
+      const { requests: rows } = await api.listRequests()
       setRequests((rows || []).map(row => mapRecord(row, row.status)))
     } catch (err) {
       setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
@@ -687,7 +780,7 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
     const unsubscribe = subscribeToRequests(() => fetchData())
 
     return unsubscribe
-  }, [token])
+  }, [])
 
   const visibleRequests = useMemo(() => requests.filter(item => {
     const matchesQuery = `${item.name} ${item.id} ${item.purpose}`.toLowerCase().includes(query.toLowerCase())
@@ -701,9 +794,9 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
 
     try {
       if (status === 'Diterima') {
-        await api.approveRequest(target.dbId, token)
+        await api.approveRequest(target.dbId)
       } else {
-        await api.rejectRequest(target.dbId, token)
+        await api.rejectRequest(target.dbId)
       }
 
       setNotice(`Request ${target.id} berhasil ${status === 'Diterima' ? 'disetujui' : 'ditolak'}.`)
@@ -715,11 +808,29 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
     }
   }
 
-  function goTo(id) {
+  function goTo(id, status = 'Semua') {
     setActive(id)
     setQuery('')
-    setFilter('Semua')
+    setFilter(status)
+    setContactFilter('Semua')
     setMobileOpen(false)
+  }
+
+  async function toggleContacted(id, contacted) {
+    const target = requests.find(item => item.id === id)
+    if (!target) return
+
+    try {
+      await api.setContacted(target.dbId, contacted)
+      setRequests(current => current.map(item => item.id === id
+        ? { ...item, contacted, contactedAt: contacted ? new Date().toISOString() : null }
+        : item))
+      setNotice(`Tamu ${target.id} ditandai ${contacted ? 'sudah' : 'belum'} dihubungi.`)
+      window.setTimeout(() => setNotice(''), 3000)
+    } catch (err) {
+      setNotice('Gagal memperbarui status kontak: ' + (err.message || 'Terjadi kesalahan'))
+      window.setTimeout(() => setNotice(''), 4000)
+    }
   }
 
   const pageTitle = navItems.find(item => item.id === active)?.label || 'Dashboard'
@@ -779,9 +890,9 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
             </div>
           ) : (
             <>
-              {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} onUpdateStatus={updateStatus} />}
-              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onUpdateStatus={updateStatus} />}
-              {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onUpdateStatus={updateStatus} />}
+              {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} />}
+              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} />}
+              {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} />}
               {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
             </>
           )}
@@ -793,12 +904,9 @@ function AdminApp({ onLogout, adminName, token, theme, onToggleTheme }) {
   )
 }
 
-const TOKEN_KEY = 'peta-skanida.admin.token'
-
 function App() {
   const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu', 'tamu-success'
   const [adminName, setAdminName] = useState('')
-  const [token, setToken] = useState('')
   const [restoring, setRestoring] = useState(true)
   const [guestResult, setGuestResult] = useState(null)
   const [theme, setTheme] = useState(getInitialTheme)
@@ -819,25 +927,24 @@ function App() {
 
   const toggleTheme = () => setTheme(current => (current === 'dark' ? 'light' : 'dark'))
 
-  // Pulihkan sesi admin dari token yang tersimpan di browser
+  // Pulihkan sesi admin dari token yang tersimpan di browser.
+  // api.me() otomatis memperbarui token yang kedaluwarsa memakai refresh token.
   useEffect(() => {
-    const savedToken = window.localStorage.getItem(TOKEN_KEY)
-    if (!savedToken) {
+    if (!loadToken()) {
       setRestoring(false)
       return
     }
 
     let active = true
     api
-      .me(savedToken)
+      .me()
       .then(({ admin }) => {
         if (!active) return
-        setToken(savedToken)
         setAdminName(admin.nama)
         setRole('admin')
       })
       .catch(() => {
-        window.localStorage.removeItem(TOKEN_KEY)
+        clearSession()
       })
       .finally(() => {
         if (active) setRestoring(false)
@@ -848,16 +955,15 @@ function App() {
     }
   }, [])
 
-  function handleLoginSuccess(nama, newToken) {
-    window.localStorage.setItem(TOKEN_KEY, newToken)
-    setToken(newToken)
-    setAdminName(nama)
+  function handleLoginSuccess(result) {
+    saveSession(result)
+    setAdminName(result.admin.nama)
     setRole('admin')
   }
 
   function handleLogout() {
-    window.localStorage.removeItem(TOKEN_KEY)
-    setToken('')
+    api.logout() // cabut sesi di Supabase Auth (fire-and-forget)
+    clearSession()
     setAdminName('')
     setRole(null)
   }
@@ -884,7 +990,7 @@ function App() {
     onAgain={() => { setGuestResult(null); setRole('tamu') }}
     onBack={() => { setGuestResult(null); setRole(null) }}
   />
-  return <AdminApp adminName={adminName} token={token} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+  return <AdminApp adminName={adminName} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
 }
 
 export default App

@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "db:sync": "node scripts/sync-migrations.js"
+    "db:sync": "node scripts/sync-migrations.js",
+    "admin:create": "node scripts/create-admin.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
