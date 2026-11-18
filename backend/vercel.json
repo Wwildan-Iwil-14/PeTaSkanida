@@ -1,9 +1,11 @@
 {
-  "framework": null,
   "functions": {
-    "index.js": {
+    "api/*.js": {
       "memory": 1024,
       "maxDuration": 10
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/api/auth/:path*", "destination": "/api/_auth/:path*" }
+  ]
 }

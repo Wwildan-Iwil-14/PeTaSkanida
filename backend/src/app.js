@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { config } from './config.js'
 import routes from './routes/index.js'
+import authRoutes from './routes/auth.routes.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 
 export function createApp() {
@@ -42,6 +43,10 @@ export function createApp() {
       },
     })
   })
+
+  // Alias untuk Vercel: path /api/auth/* diblokir oleh routing internal Vercel,
+  // sehingga vercel.json me-rewrite-nya ke /api/_auth/* sebelum masuk ke sini.
+  app.use('/api/_auth', authRoutes)
 
   app.use('/api', routes)
 
