@@ -24,6 +24,7 @@ Panduan ini disusun langkah demi langkah. Ikuti urut dari atas ke bawah. Tidak b
 11. [Keamanan Penting](#11-keamanan-penting)
 12. [Perintah Tambahan](#12-perintah-tambahan)
 13. [Deploy Frontend ke GitHub Pages](#13-deploy-frontend-ke-github-pages)
+14. [Deploy ke Vercel (Frontend + Backend)](#14-deploy-ke-vercel-frontend--backend)
 
 ---
 
@@ -454,6 +455,71 @@ hosting Node.js terpisah (misalnya Render, Railway, atau Fly.io), lalu:
 - jalankan ulang workflow deploy frontend.
 
 Jangan pernah menaruh `SUPABASE_SERVICE_ROLE_KEY` di frontend atau repository publik.
+
+---
+
+## 14. Deploy ke Vercel (Frontend + Backend)
+
+Gunakan repository production yang sama untuk dua project Vercel:
+
+`https://github.com/petaskanida-collab/Peta-Skanida`
+
+### 14.1 Backend (deploy lebih dulu)
+
+1. Di Vercel, **Add New Project** → import repo di atas.
+2. Isi:
+   - **Root Directory:** `backend`
+   - **Framework Preset:** Other
+   - **Build Command:** kosongkan
+   - **Output Directory:** kosongkan
+3. Tambahkan Environment Variables:
+
+```env
+SUPABASE_URL=https://PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=service-role-key
+SUPABASE_ANON_KEY=anon-key
+CORS_ORIGIN=https://petaskanida-collab.github.io,http://localhost:5173
+NODE_ENV=production
+```
+
+4. Deploy. Entry point serverless sudah tersedia di `backend/api/[...path].js`
+   dan konfigurasi di `backend/vercel.json`.
+5. Cek `https://<backend-vercel>/api/health` harus mengembalikan status `ok`.
+6. Setelah frontend Vercel punya domain, tambahkan domain itu ke `CORS_ORIGIN`
+   backend, lalu redeploy backend.
+
+> `SUPABASE_SERVICE_ROLE_KEY` hanya boleh ada di Environment Variables backend.
+> Jangan pernah memasukkannya ke project frontend.
+
+### 14.2 Frontend
+
+1. **Add New Project** → import repo yang sama.
+2. Isi:
+   - **Root Directory:** `frontend`
+   - **Framework Preset:** Vite
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+3. Tambahkan Environment Variables:
+
+```env
+VITE_BASE_PATH=/
+VITE_API_BASE_URL=https://<backend-vercel>/api
+VITE_SUPABASE_URL=https://PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=anon-key
+```
+
+4. Deploy.
+
+`VITE_BASE_PATH=/` wajib untuk Vercel karena aplikasi disajikan dari domain root.
+Tanpa itu, build memakai `/Peta-Skanida/` yang khusus GitHub Pages.
+
+### 14.3 Urutan konfigurasi CORS
+
+1. Deploy backend → dapat URL backend.
+2. Deploy frontend dengan `VITE_API_BASE_URL` → dapat URL frontend.
+3. Tambahkan URL frontend ke `CORS_ORIGIN` backend.
+4. Redeploy backend.
+5. Buka website, uji form tamu dan login admin.
 
 ---
 

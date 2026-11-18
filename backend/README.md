@@ -19,12 +19,13 @@ Semua operasi penting — login admin, ajukan permintaan, setujui atau tolak —
 7. [Daftar Endpoint API](#7-daftar-endpoint-api)
 8. [Catatan Keamanan](#8-catatan-keamanan)
 9. [Pemecahan Masalah](#9-pemecahan-masalah)
+10. [Deploy ke Vercel](#10-deploy-ke-vercel)
 
 ---
 
 ## 1. Yang Dibutuhkan
 
-- **Node.js 18+** (cek dengan perintah `node -v`)
+- **Node.js 20+** (cek dengan perintah `node -v`)
 - **Database Supabase sudah disiapkan** (lihat [`../database/README.md`](../database/README.md))
 - **Tiga nilai dari Supabase** (Project Settings → API): **Project URL**, **anon key**, **service_role key**
 
@@ -145,8 +146,10 @@ Jika tulisan itu muncul, backend sudah sehat. Jika error, lihat [bagian 9](#9-pe
 
 ```
 backend/
+├── api/
+│   └── [...path].js       # entry point serverless Vercel (semua /api/*)
 ├── src/
-│   ├── server.js          # titik mulai server
+│   ├── server.js          # titik mulai server lokal / Render / Railway
 │   ├── app.js             # pengaturan Express (CORS, JSON, routing)
 │   ├── config.js          # membaca & memeriksa file .env
 │   ├── routes/            # daftar endpoint API (auth, request)
@@ -156,6 +159,7 @@ backend/
 │   ├── create-admin.js    # pendaftaran & reset password admin di Supabase Auth
 │   └── sync-migrations.js # menyalin database/migrations ke supabase/migrations
 ├── supabase/              # konfigurasi Supabase CLI (opsional)
+├── vercel.json            # pengaturan fungsi serverless Vercel
 ├── .env.example           # contoh isi .env
 └── package.json           # daftar library & perintah
 ```
@@ -215,6 +219,39 @@ curl -X POST http://localhost:3001/api/auth/login \
 | Login: `Akun ini bukan admin terdaftar` | Akun ada di `auth.users`, tetapi profil belum ada di `public.admins` | Jalankan `npm run admin:create -- <email> <password> <nama>` |
 | Frontend tidak bisa konek | `CORS_ORIGIN` salah | Pastikan isinya alamat frontend, misalnya `http://localhost:5173` |
 | Perubahan `.env` tidak terbaca | Server belum direstart | Hentikan (Ctrl+C), lalu jalankan `npm run dev` lagi |
+
+---
+
+## 10. Deploy ke Vercel
+
+Backend bisa dijalankan sebagai **Vercel Serverless Function**. Entry point-nya ada di
+`backend/api/[...path].js`; file itu mengekspor Express app tanpa memanggil `app.listen()`.
+
+1. Import repository production ke Vercel.
+2. Isi project:
+   - **Root Directory:** `backend`
+   - **Framework Preset:** Other
+   - **Build Command:** kosongkan
+   - **Output Directory:** kosongkan
+3. Tambahkan Environment Variables:
+
+```env
+SUPABASE_URL=https://PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=service-role-key
+SUPABASE_ANON_KEY=anon-key
+CORS_ORIGIN=https://petaskanida-collab.github.io,http://localhost:5173
+NODE_ENV=production
+```
+
+4. Deploy, lalu cek `https://<backend-vercel>/api/health`.
+5. Setelah frontend Vercel punya domain, tambahkan domain tersebut ke `CORS_ORIGIN`
+   (pisahkan dengan koma), lalu redeploy.
+
+> **Penting:** `SUPABASE_SERVICE_ROLE_KEY` hanya disimpan di Environment Variables
+> backend Vercel. Jangan pernah memasukkannya ke project frontend atau repository.
+
+Fungsi serverless memakai batas waktu 10 detik (lihat `vercel.json`). Semua endpoint
+saat ini hanya melakukan operasi Supabase yang singkat, jadi batas itu cukup.
 
 ---
 

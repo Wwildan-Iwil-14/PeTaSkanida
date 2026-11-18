@@ -169,8 +169,11 @@ workflow di `.github/workflows/deploy.yml` otomatis mengunggah isi `frontend/dis
 
 Saat deploy ke hosting lain, unggah isi folder `frontend/dist`, isi variabel environment
 (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) di platform hosting,
-lalu **build ulang**. Jika memakai domain root (bukan sub-folder), ubah `base` di
-`vite.config.js` menjadi `/`.
+lalu **build ulang**.
+
+Untuk Vercel (domain root), set `VITE_BASE_PATH=/` di Environment Variables Vercel.
+Untuk GitHub Pages, biarkan kosong agar default `/Peta-Skanida/` dipakai.
+Konfigurasi project Vercel sudah tersedia di `frontend/vercel.json`.
 
 > Variabel `VITE_` hanya dibaca saat build. Jika kamu mengubah `.env`, jalankan lagi `npm run build`.
 
