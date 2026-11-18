@@ -150,7 +150,7 @@ function LoginPage({ onSelect, theme, onToggleTheme }) {
       <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white dark:bg-slate-900 lg:flex">
         <div className="flex items-center gap-3">
-          <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
+          <img src={`${import.meta.env.BASE_URL}logo-peta-skanida.png`} alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
           <div>
             <p className="font-bold tracking-wide">PeTa SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
@@ -171,7 +171,7 @@ function LoginPage({ onSelect, theme, onToggleTheme }) {
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img src="/logo-peta-skanida.png" alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
+              <img src={`${import.meta.env.BASE_URL}logo-peta-skanida.png`} alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
               <div>
                 <p className="font-bold tracking-wide text-slate-900 dark:text-slate-100">PeTa SKANIDA</p>
                 <p className="text-[10px] tracking-[.15em] text-slate-400 dark:text-slate-500">SMKN 2 MAGELANG</p>
