@@ -27,7 +27,10 @@ export const config = {
   usingServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
   // Catatan: masa berlaku & tanda tangan token login diurus Supabase Auth (GoTrue),
   // sehingga AUTH_SECRET / TOKEN_TTL_SECONDS tidak lagi dipakai.
-  corsOrigins: toList(process.env.CORS_ORIGIN || 'http://localhost:5173'),
+  corsOrigins: toList(
+    process.env.CORS_ORIGIN ||
+      'http://localhost:5173,https://petaskanida-collab.github.io',
+  ),
   nodeEnv: process.env.NODE_ENV || 'development',
 }
 

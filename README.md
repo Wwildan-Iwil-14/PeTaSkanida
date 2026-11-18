@@ -23,6 +23,7 @@ Panduan ini disusun langkah demi langkah. Ikuti urut dari atas ke bawah. Tidak b
 10. [Pemecahan Masalah (Troubleshooting)](#10-pemecahan-masalah-troubleshooting)
 11. [Keamanan Penting](#11-keamanan-penting)
 12. [Perintah Tambahan](#12-perintah-tambahan)
+13. [Deploy Frontend ke GitHub Pages](#13-deploy-frontend-ke-github-pages)
 
 ---
 
@@ -261,7 +262,7 @@ npm run dev
 Jika berhasil, akan muncul alamat seperti ini:
 
 ```
-➜  Local:   http://localhost:5173/
+➜  Local:   http://localhost:5173/Peta-Skanida/
 ```
 
 Detail tentang frontend ada di [`frontend/README.md`](frontend/README.md).
@@ -270,7 +271,7 @@ Detail tentang frontend ada di [`frontend/README.md`](frontend/README.md).
 
 ## 7. Buka Aplikasi & Login
 
-Buka browser ke: **<http://localhost:5173/>**
+Buka browser ke: **<http://localhost:5173/Peta-Skanida/>**
 
 Halaman awal menyediakan dua pilihan:
 
@@ -412,6 +413,47 @@ Dijalankan dari folder utama `Peta-skanida`:
 | PATCH | `/api/requests/:id/contacted` | Ya | Tandai tamu sudah/belum dihubungi (`{ "dihubungi": true }`) |
 
 Endpoint yang perlu login memakai header: `Authorization: Bearer <token>`.
+
+---
+
+## 13. Deploy Frontend ke GitHub Pages
+
+Frontend sudah dikonfigurasi dengan base path `/Peta-Skanida/` agar cocok dengan
+URL `https://petaskanida-collab.github.io/Peta-Skanida/`.
+
+Workflow `.github/workflows/deploy.yml` akan otomatis:
+
+1. Install dependency memakai `frontend/package-lock.json` (`npm ci`).
+2. Build frontend dari folder `frontend`.
+3. Memeriksa bahwa `frontend/dist/index.html` memakai path `/Peta-Skanida/assets/...`.
+4. Mengunggah **isi** `frontend/dist` sebagai artifact GitHub Pages.
+
+Di repository `petaskanida-collab/Peta-Skanida`, buka **Settings > Pages** dan pilih
+**Source: GitHub Actions**. Setelah itu setiap push ke branch `main` akan melakukan
+build dan deploy otomatis.
+
+### Variabel build (Settings > Secrets and variables > Actions > Variables)
+
+| Variable | Wajib? | Keterangan |
+|---|---|---|
+| `VITE_API_BASE_URL` | Ya untuk fitur backend | URL backend publik, contoh `https://api.example.com/api` |
+| `VITE_SUPABASE_URL` | Opsional | Mengaktifkan real-time dashboard admin |
+| `VITE_SUPABASE_ANON_KEY` | Opsional | **Anon key** saja, jangan service role key |
+
+Jika `VITE_API_BASE_URL` belum diisi, frontend tetap tampil normal, tetapi form tamu
+dan login admin akan menampilkan pesan bahwa backend belum terhubung.
+
+### Backend tidak bisa dijalankan di GitHub Pages
+
+GitHub Pages hanya untuk file statis. Backend Express + Supabase harus dipasang di
+hosting Node.js terpisah (misalnya Render, Railway, atau Fly.io), lalu:
+
+- set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, dan `SUPABASE_ANON_KEY` di hosting backend;
+- set `CORS_ORIGIN=https://petaskanida-collab.github.io`;
+- set `VITE_API_BASE_URL` di repository Variables ke URL backend tersebut;
+- jalankan ulang workflow deploy frontend.
+
+Jangan pernah menaruh `SUPABASE_SERVICE_ROLE_KEY` di frontend atau repository publik.
 
 ---
 

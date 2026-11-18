@@ -163,8 +163,14 @@ npm run build     # hasil ada di folder frontend/dist
 npm run preview   # mencoba hasil build secara lokal
 ```
 
-Unggah isi folder `frontend/dist` ke hosting statis (misalnya Netlify, Vercel, Cloudflare Pages).
-Saat deploy, isi variabel environment (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) di platform hosting, lalu **build ulang**.
+Build memakai base path `/Peta-Skanida/` (lihat `vite.config.js`), sehingga hasilnya
+cocok untuk `https://petaskanida-collab.github.io/Peta-Skanida/`. Untuk GitHub Pages,
+workflow di `.github/workflows/deploy.yml` otomatis mengunggah isi `frontend/dist`.
+
+Saat deploy ke hosting lain, unggah isi folder `frontend/dist`, isi variabel environment
+(`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) di platform hosting,
+lalu **build ulang**. Jika memakai domain root (bukan sub-folder), ubah `base` di
+`vite.config.js` menjadi `/`.
 
 > Variabel `VITE_` hanya dibaca saat build. Jika kamu mengubah `.env`, jalankan lagi `npm run build`.
 
