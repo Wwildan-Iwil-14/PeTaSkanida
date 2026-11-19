@@ -4,6 +4,11 @@ import { config } from './config.js'
 import routes from './routes/index.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 
+// Saat development, izinkan semua alamat lokal (localhost / 127.0.0.1 dengan
+// port berapa pun) supaya frontend tetap bisa terhubung walau port Vite
+// berubah (misalnya 5174 karena 5173 sedang dipakai).
+const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/
+
 export function createApp() {
   const app = express()
 
@@ -13,6 +18,9 @@ export function createApp() {
         // Permintaan tanpa Origin (curl, Postman, server-to-server) selalu diizinkan.
         if (!origin) return callback(null, true)
         if (config.corsOrigins.includes('*') || config.corsOrigins.includes(origin)) {
+          return callback(null, true)
+        }
+        if (config.nodeEnv !== 'production' && LOCAL_ORIGIN.test(origin)) {
           return callback(null, true)
         }
         return callback(null, false)

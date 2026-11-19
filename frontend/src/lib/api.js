@@ -6,7 +6,14 @@
  * Sesi admin memakai JWT Supabase Auth. Access token yang kedaluwarsa otomatis
  * ditukar dengan yang baru memakai refresh token (lihat refreshSession).
  */
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '')
+// Path relatif /api diteruskan oleh proxy Vite (lihat vite.config.js) ke
+// backend, sehingga frontend & backend tersambung tanpa masalah CORS.
+// Untuk deployment, isi VITE_API_BASE_URL dengan URL backend lengkap,
+// misalnya https://api.contoh.com/api.
+const CONFIGURED_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').trim()
+const BASE_URL = (
+  CONFIGURED_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3001/api')
+).replace(/\/+$/, '')
 
 const TOKEN_KEY = 'peta-skanida.admin.token'
 const REFRESH_KEY = 'peta-skanida.admin.refresh'

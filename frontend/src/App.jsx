@@ -303,14 +303,56 @@ function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
   )
 }
 
-// GANTI pilihan di bawah ini saat opsi tujuan sudah disediakan.
-const opsiTujuan = ['Pilih tujuan...', 'Kepala SKANIDA', 'Staf Administrasi', 'Divisi Humas', 'Lainnya...']
+// Pilihan tujuan dikelompokkan agar mudah dicari.
+const opsiTujuan = [
+  { label: 'Organisasi', items: ['Osis'] },
+  {
+    label: 'Ekstrakurikuler',
+    items: [
+      'Tonti',
+      'Pasopati',
+      'Band',
+      'PIK - R',
+      'PMR',
+      'Rohis',
+      'Cospala',
+      'English Club',
+      'Futsal',
+      'Basket',
+      'Volly',
+      'Silat',
+      'Padus',
+      'Screen',
+      'Tari',
+    ],
+  },
+  {
+    label: 'Instansi',
+    items: [
+      'Kepala Sekolah',
+      'WKS 1',
+      'WKS 2',
+      'WKS 3',
+      'WKS 4',
+      'Kaproli AKL',
+      'Kaproli MPLB',
+      'Kaproli PPLG',
+      'Kaproli PM',
+      'BK',
+      'STP2K',
+      'Perpustakaan',
+      'TU',
+      'Guru',
+    ],
+  },
+]
 // GANTI pilihan di bawah ini saat opsi keperluan sudah disediakan.
 const opsiKeperluan = ['Pilih keperluan...', 'Bertemu keluarga', 'Kunjungan dinas', 'Keperluan administrasi', 'Lainnya...']
 
 function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', date: '', time: '', people: '1', tujuan: '', keperluan: '' })
   const [customOpen, setCustomOpen] = useState({})
+  const [tujuanKategori, setTujuanKategori] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -407,7 +449,91 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
                 />
               </div>
             ))}
-            {[{ key: 'tujuan', label: 'Tujuan (mau bertemu siapa)', options: opsiTujuan, placeholder: 'Tuliskan tujuan Anda...' }, { key: 'keperluan', label: 'Keperluan', options: opsiKeperluan, placeholder: 'Tuliskan keperluan Anda...' }].map(({ key, label, options, placeholder }) => (
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">Tujuan (mau bertemu siapa)</label>
+              <div className="flex flex-wrap gap-2">
+                {opsiTujuan.map(group => {
+                  const active = tujuanKategori === group.label
+                  return (
+                    <button
+                      key={group.label}
+                      type="button"
+                      aria-expanded={active}
+                      onClick={() => {
+                        setTujuanKategori(active ? '' : group.label)
+                        setForm(current => ({ ...current, tujuan: '' }))
+                      }}
+                      className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                        active
+                          ? 'border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-950/40'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300'
+                      }`}
+                    >
+                      {group.label}
+                    </button>
+                  )
+                })}
+                <button
+                  type="button"
+                  aria-expanded={tujuanKategori === 'Lainnya'}
+                  onClick={() => {
+                    setTujuanKategori(tujuanKategori === 'Lainnya' ? '' : 'Lainnya')
+                    setForm(current => ({ ...current, tujuan: '' }))
+                  }}
+                  className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                    tujuanKategori === 'Lainnya'
+                      ? 'border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-950/40'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300'
+                  }`}
+                >
+                  Lainnya
+                </button>
+              </div>
+
+              {opsiTujuan.map(group => {
+                if (tujuanKategori !== group.label) return null
+                return (
+                  <div key={group.label} className="mt-3 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-950/60 sm:grid-cols-2">
+                    {group.items.map(item => {
+                      const selected = form.tujuan === item
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setForm(current => ({ ...current, tujuan: item }))}
+                          className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition ${
+                            selected
+                              ? 'border-indigo-400 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100 dark:border-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-200 dark:ring-indigo-500/20'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300'
+                          }`}
+                        >
+                          {item}
+                          {selected && <Check size={15} className="shrink-0 text-indigo-500 dark:text-indigo-300" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+
+              {tujuanKategori === 'Lainnya' && (
+                <input
+                  value={form.tujuan}
+                  onChange={e => setForm({ ...form, tujuan: e.target.value })}
+                  placeholder="Tuliskan tujuan Anda..."
+                  className={`mt-2 ${FIELD} bg-indigo-50/40 dark:bg-indigo-500/10`}
+                />
+              )}
+
+              {form.tujuan && (
+                <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Dipilih: <span className="font-semibold text-indigo-600 dark:text-indigo-300">{form.tujuan}</span>
+                </p>
+              )}
+            </div>
+
+            {[{ key: 'keperluan', label: 'Keperluan', options: opsiKeperluan, placeholder: 'Tuliskan keperluan Anda...' }].map(({ key, label, options, placeholder }) => (
               <div key={key}>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
                 <div className="relative">
