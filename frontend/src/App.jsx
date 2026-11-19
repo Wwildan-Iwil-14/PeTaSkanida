@@ -856,7 +856,7 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   )
 }
 
-function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false, statusOptions = ['Semua', 'Pending', 'Diterima', 'Ditolak'] }) {
+function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false, statusOptions = ['Semua', 'Pending', 'Diterima', 'Ditolak'], sortOrder, onSortOrderChange }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="relative flex-1">
@@ -894,6 +894,20 @@ function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFil
           {statusOptions.map(option => <option key={option}>{option}</option>)}
         </select>
       </div>
+      {sortOrder !== undefined && (
+        <div className="relative">
+          <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <select
+            value={sortOrder}
+            onChange={e => onSortOrderChange(e.target.value)}
+            aria-label="Urutkan berdasarkan tanggal request"
+            className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:focus:border-indigo-500 sm:w-52"
+          >
+            <option value="Terkini">Tanggal Terkini</option>
+            <option value="Terlama">Tanggal Terlama</option>
+          </select>
+        </div>
+      )}
     </div>
   )
 }
@@ -933,7 +947,7 @@ function Dashboard({ requests, adminName, onGoTo }) {
   </>
 }
 
-function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete }) {
+function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange }) {
   const isPending = type === 'request'
   const [tamuView, setTamuView] = useState('semua')
 
@@ -945,9 +959,16 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
   const byStatus = isPending
     ? visibleRequests.filter(item => item.status === 'Pending')
     : view === 'terkini' ? recent : managed
-  const items = isPending
+  const filtered = isPending
     ? byStatus
     : byStatus.filter(item => view !== 'semua' || contactFilter === 'Semua' || (contactFilter === 'Sudah' ? item.contacted : !item.contacted))
+  const items = sortOrder === undefined
+    ? filtered
+    : filtered.slice().sort((a, b) => {
+        const toValue = item => new Date(`${item.date || ''}T${item.time || '00:00'}`).getTime() || 0
+        const diff = toValue(a) - toValue(b)
+        return sortOrder === 'Terlama' ? diff : -diff
+      })
   const contactedCount = byStatus.filter(item => item.contacted).length
 
   function selectView(next) {
@@ -1000,6 +1021,8 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
         contactFilter={contactFilter}
         onContactFilterChange={onContactFilterChange}
         statusOptions={isPending ? ['Semua', 'Pending', 'Diterima', 'Ditolak'] : ['Semua', 'Diterima', 'Ditolak']}
+        sortOrder={isPending ? sortOrder : undefined}
+        onSortOrderChange={onSortOrderChange}
       />
     </div>
     <Panel
@@ -1048,6 +1071,7 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
   const [requests, setRequests] = useState([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Semua')
+  const [sortOrder, setSortOrder] = useState('Terkini')
   const [contactFilter, setContactFilter] = useState('Semua')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
@@ -1125,6 +1149,7 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
     setActive(id)
     setQuery('')
     setFilter(status)
+    setSortOrder('Terkini')
     setContactFilter('Semua')
     setMobileOpen(false)
   }
@@ -1205,7 +1230,7 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
             <>
               {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} />}
               {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} />}
-              {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} />}
+              {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} sortOrder={sortOrder} onSortOrderChange={setSortOrder} />}
               {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
             </>
           )}
