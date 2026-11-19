@@ -13,6 +13,7 @@ export function subscribeToRequests(onChange) {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_pending' }, onChange)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_acc' }, onChange)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'req_reject' }, onChange)
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'req_acc' }, onChange)
     .subscribe()
 
   return () => {

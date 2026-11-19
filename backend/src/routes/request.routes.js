@@ -57,18 +57,23 @@ router.get(
   '/',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const [pendingRes, accRes, rejectRes] = await Promise.all([
+    const [pendingRes, accRes, rejectRes, historyRes] = await Promise.all([
       supabase.from('req_pending').select('*').order('id', { ascending: false }),
       supabase.from('req_acc').select('id'),
       supabase.from('req_reject').select('id'),
+      supabase.from('riwayat').select('id'),
     ])
 
-    const failure = pendingRes.error || accRes.error || rejectRes.error
+    const failure = pendingRes.error || accRes.error || rejectRes.error || historyRes.error
     if (failure) throw httpError(502, `Gagal memuat data: ${failure.message}`)
 
     const acceptedIds = new Set((accRes.data || []).map(row => row.id))
     const rejectedIds = new Set((rejectRes.data || []).map(row => row.id))
+    const completedIds = new Set((historyRes.data || []).map(row => row.id))
 
+    // Urutan prioritas: Diterima (masih aktif) → Ditolak → Selesai (arsip).
+    // Tamu yang sudah selesai otomatis hilang dari Kelola Tamu / Kunjungan
+    // Terkini karena barisnya dihapus dari req_acc saat diselesaikan.
     const requests = (pendingRes.data || []).map(row => ({
       ...row,
       dihubungi: Boolean(row.dihubungi),
@@ -77,7 +82,9 @@ router.get(
         ? 'Diterima'
         : rejectedIds.has(row.id)
           ? 'Ditolak'
-          : 'Pending',
+          : completedIds.has(row.id)
+            ? 'Selesai'
+            : 'Pending',
     }))
 
     res.json({ requests })
@@ -86,7 +93,8 @@ router.get(
 
 /**
  * POST /api/requests/:id/approve
- * Admin menyetujui request: dicatat di req_acc dan riwayat.
+ * Admin menyetujui request: dicatat di req_acc sebagai kunjungan aktif.
+ * Riwayat baru diisi saat admin menandai kunjungan selesai.
  */
 router.post(
   '/:id/approve',
@@ -98,11 +106,6 @@ router.post(
     const { error: accError } = await supabase.from('req_acc').insert(record)
     if (accError && accError.code !== DUPLICATE_KEY) {
       throw httpError(502, `Gagal menyetujui request: ${accError.message}`)
-    }
-
-    const { error: historyError } = await supabase.from('riwayat').insert(record)
-    if (historyError && historyError.code !== DUPLICATE_KEY) {
-      throw httpError(502, `Gagal menyimpan riwayat: ${historyError.message}`)
     }
 
     res.json({ request: { ...record, status: 'Diterima' } })
@@ -131,6 +134,42 @@ router.post(
     }
 
     res.json({ request: { ...record, status: 'Ditolak' } })
+  }),
+)
+
+/**
+ * POST /api/requests/:id/complete
+ * Admin menandai kunjungan selesai: data diarsipkan ke riwayat lalu
+ * dihapus dari req_acc. Statusnya menjadi "Selesai" sehingga hilang dari
+ * Kelola Tamu / Kunjungan Terkini dan muncul di Riwayat Kunjungan.
+ */
+router.post(
+  '/:id/complete',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id)
+    const record = await loadPendingRecord(id)
+
+    const { data: accepted, error: accError } = await supabase
+      .from('req_acc')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (accError) throw httpError(502, `Gagal memeriksa status kunjungan: ${accError.message}`)
+    if (!accepted) throw httpError(409, 'Hanya tamu dengan status Diterima yang dapat diselesaikan.')
+
+    // Data lama bisa saja sudah memiliki baris riwayat dari alur sebelumnya,
+    // jadi duplikat diabaikan.
+    const { error: historyError } = await supabase.from('riwayat').insert(record)
+    if (historyError && historyError.code !== DUPLICATE_KEY) {
+      throw httpError(502, `Gagal menyimpan riwayat: ${historyError.message}`)
+    }
+
+    const { error: removeError } = await supabase.from('req_acc').delete().eq('id', id)
+    if (removeError) throw httpError(502, `Gagal menyelesaikan kunjungan: ${removeError.message}`)
+
+    res.json({ request: { ...record, status: 'Selesai' } })
   }),
 )
 

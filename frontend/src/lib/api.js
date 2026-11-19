@@ -172,6 +172,10 @@ export const api = {
   approveRequest: id =>
     authedRequest(`/requests/${id}/approve`, { method: 'POST', token: currentToken() }),
 
+  /** Tandai kunjungan selesai → pindah dari Kelola Tamu ke Riwayat Kunjungan. */
+  completeRequest: id =>
+    authedRequest(`/requests/${id}/complete`, { method: 'POST', token: currentToken() }),
+
   rejectRequest: id => authedRequest(`/requests/${id}/reject`, { method: 'POST', token: currentToken() }),
 
   /** Tandai tamu sudah (true) / belum (false) dihubungi. */

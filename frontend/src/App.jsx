@@ -86,9 +86,10 @@ function Status({ value }) {
     Pending: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30',
     Diterima: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30',
     Ditolak: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30',
+    Selesai: 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-500/30',
   }
-  const Icon = value === 'Pending' ? Hourglass : value === 'Diterima' ? CheckCircle2 : XCircle
-  return <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styles[value]}`}><Icon size={13} />{value}</span>
+  const Icon = value === 'Pending' ? Hourglass : value === 'Diterima' ? CheckCircle2 : value === 'Selesai' ? BadgeCheck : XCircle
+  return <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styles[value] || styles.Pending}`}><Icon size={13} />{value}</span>
 }
 
 function ContactBadge({ contacted }) {
@@ -764,10 +765,11 @@ function Panel({ title, subtitle, action, children }) {
   )
 }
 
-function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus, onToggleContacted }) {
+function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus, onToggleContacted, onComplete }) {
   if (!items.length) {
     return <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data yang cocok.</div>
   }
+  const hasActions = showActions || Boolean(onComplete)
   const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
   return (
     <div className="overflow-x-auto">
@@ -780,8 +782,8 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
             <th className="px-6 py-4 font-semibold">Jadwal</th>
             <th className="px-6 py-4 font-semibold">Jumlah</th>
             <th className="px-6 py-4 font-semibold">Status</th>
+            {hasActions && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
             {showContact && <th className="px-6 py-4 font-semibold">Kontak</th>}
-            {showActions && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -799,6 +801,24 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
               </td>
               <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.people} orang</td>
               <td className="px-6 py-4"><Status value={item.status} /></td>
+              {hasActions && <td className="px-6 py-4">
+                {item.status === 'Pending' && showActions ? (
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => onUpdateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">Terima</button>
+                    <button onClick={() => onUpdateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20">Tolak</button>
+                  </div>
+                ) : item.status === 'Diterima' && onComplete ? (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => onComplete(item.id)}
+                      title="Tandai kunjungan selesai dan pindahkan ke Riwayat Kunjungan"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
+                    >
+                      <CheckCircle2 size={14} /> Selesai
+                    </button>
+                  </div>
+                ) : <div className="text-right text-xs text-slate-400 dark:text-slate-500">{item.status === 'Selesai' ? 'Di riwayat' : 'Sudah diproses'}</div>}
+              </td>}
               {showContact && <td className="px-6 py-4">
                 <div className="flex flex-col items-start gap-2">
                   <ContactBadge contacted={item.contacted} />
@@ -828,14 +848,6 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
                   </div>
                 </div>
               </td>}
-              {showActions && <td className="px-6 py-4">
-                {item.status === 'Pending' ? (
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => onUpdateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">Terima</button>
-                    <button onClick={() => onUpdateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20">Tolak</button>
-                  </div>
-                ) : <div className="text-right text-xs text-slate-400 dark:text-slate-500">Sudah diproses</div>}
-              </td>}
             </tr>
           ))}
         </tbody>
@@ -844,7 +856,7 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   )
 }
 
-function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false }) {
+function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false, statusOptions = ['Semua', 'Pending', 'Diterima', 'Ditolak'] }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="relative flex-1">
@@ -879,7 +891,7 @@ function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFil
           aria-label="Filter status"
           className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:focus:border-indigo-500 sm:w-44"
         >
-          <option>Semua</option><option>Pending</option><option>Diterima</option><option>Ditolak</option>
+          {statusOptions.map(option => <option key={option}>{option}</option>)}
         </select>
       </div>
     </div>
@@ -921,60 +933,113 @@ function Dashboard({ requests, adminName, onGoTo }) {
   </>
 }
 
-function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted }) {
+function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete }) {
   const isPending = type === 'request'
+  const [tamuView, setTamuView] = useState('semua')
+
+  // Kelola Tamu hanya menampilkan tamu yang belum selesai.
+  // Tamu berstatus "Selesai" sudah pindah ke Riwayat Kunjungan.
+  const managed = visibleRequests.filter(item => item.status === 'Diterima' || item.status === 'Ditolak')
+  const recent = managed.filter(item => item.status === 'Diterima')
+  const view = isPending ? 'request' : (filter === 'Ditolak' ? 'semua' : tamuView)
   const byStatus = isPending
     ? visibleRequests.filter(item => item.status === 'Pending')
-    : visibleRequests.filter(item => item.status === 'Diterima' || item.status === 'Ditolak')
+    : view === 'terkini' ? recent : managed
   const items = isPending
     ? byStatus
-    : byStatus.filter(item => contactFilter === 'Semua' || (contactFilter === 'Sudah' ? item.contacted : !item.contacted))
+    : byStatus.filter(item => view !== 'semua' || contactFilter === 'Semua' || (contactFilter === 'Sudah' ? item.contacted : !item.contacted))
   const contactedCount = byStatus.filter(item => item.contacted).length
+
+  function selectView(next) {
+    setTamuView(next)
+    if (next === 'terkini' && filter === 'Ditolak') onFilterChange('Semua')
+  }
 
   return <>
     <div className="mb-6">
       <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak, lengkap dengan kontaknya. Badge hijau menandai tamu yang sudah dihubungi, badge kuning berarti belum dihubungi.'}</p>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak. Gunakan tab Kunjungan Terkini dan klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan.'}</p>
     </div>
+
+    {!isPending && (
+      <div className="mb-5 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => selectView('semua')}
+          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+            view === 'semua'
+              ? 'border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-950/40'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300'
+          }`}
+        >
+          <ClipboardList size={16} /> Semua Tamu
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${view === 'semua' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>{managed.length}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => selectView('terkini')}
+          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+            view === 'terkini'
+              ? 'border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-950/40'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:text-indigo-300'
+          }`}
+        >
+          <Users size={16} /> Kunjungan Terkini
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${view === 'terkini' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>{recent.length}</span>
+        </button>
+      </div>
+    )}
+
     <div className="mb-5">
       <SearchFilter
         query={query}
         onQueryChange={onQueryChange}
         filter={filter}
         onFilterChange={onFilterChange}
-        showContactFilter={!isPending}
+        showContactFilter={!isPending && view === 'semua'}
         contactFilter={contactFilter}
         onContactFilterChange={onContactFilterChange}
+        statusOptions={isPending ? ['Semua', 'Pending', 'Diterima', 'Ditolak'] : ['Semua', 'Diterima', 'Ditolak']}
       />
     </div>
     <Panel
-      title={isPending ? 'Permintaan menunggu persetujuan' : 'Daftar tamu terkelola'}
+      title={isPending ? 'Permintaan menunggu persetujuan' : view === 'terkini' ? 'Kunjungan terkini' : 'Daftar tamu terkelola'}
       subtitle={isPending
         ? `${items.length} data ditemukan`
-        : `${items.length} data · ${contactedCount} sudah dihubungi · ${byStatus.length - contactedCount} belum dihubungi`}
+        : view === 'terkini'
+          ? `${items.length} tamu aktif · klik Selesai untuk memindahkan ke Riwayat Kunjungan`
+          : `${items.length} data · ${contactedCount} sudah dihubungi · ${byStatus.length - contactedCount} belum dihubungi`}
     >
-      <RequestTable items={items} showActions={isPending} showContact={!isPending} onUpdateStatus={onUpdateStatus} onToggleContacted={onToggleContacted} />
+      <RequestTable
+        items={items}
+        showActions={isPending}
+        showContact={!isPending && view === 'semua'}
+        onUpdateStatus={onUpdateStatus}
+        onToggleContacted={onToggleContacted}
+        onComplete={!isPending && view === 'terkini' ? onComplete : undefined}
+      />
     </Panel>
   </>
 }
 
 function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange }) {
   const items = visibleRequests
-    .filter(item => item.status !== 'Pending')
+    .filter(item => item.status === 'Selesai' || item.status === 'Ditolak')
     .slice()
     .sort((a, b) => {
       const toValue = ({ date, time }) => new Date(`${date}T${time || '00:00'}`).getTime()
       return toValue(b) - toValue(a)
     })
+  const completed = items.filter(item => item.status === 'Selesai').length
   return <>
     <div className="mb-6">
       <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Semua permintaan yang sudah diterima atau ditolak.</p>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Arsip kunjungan yang sudah ditandai selesai, beserta permintaan yang ditolak.</p>
     </div>
     <div className="mb-5">
-      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} />
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Selesai', 'Ditolak']} />
     </div>
-    <Panel title="Riwayat request" subtitle={`${items.length} data telah diproses`}><RequestTable items={items} /></Panel>
+    <Panel title="Riwayat request" subtitle={`${items.length} data · ${completed} kunjungan selesai · ${items.length - completed} ditolak`}><RequestTable items={items} /></Panel>
   </>
 }
 
@@ -1035,6 +1100,23 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
       fetchData()
     } catch (err) {
       setNotice('Gagal memperbarui status: ' + (err.message || 'Terjadi kesalahan'))
+      window.setTimeout(() => setNotice(''), 4000)
+    }
+  }
+
+  async function completeVisit(id) {
+    const target = requests.find(item => item.id === id)
+    if (!target) return
+
+    try {
+      await api.completeRequest(target.dbId)
+      // Status Selesai otomatis menyembunyikan tamu dari Kelola Tamu /
+      // Kunjungan Terkini dan memunculkannya di Riwayat Kunjungan.
+      setRequests(current => current.map(item => item.id === id ? { ...item, status: 'Selesai' } : item))
+      setNotice(`Kunjungan ${target.id} ditandai selesai dan dipindahkan ke Riwayat Kunjungan.`)
+      window.setTimeout(() => setNotice(''), 3500)
+    } catch (err) {
+      setNotice('Gagal menyelesaikan kunjungan: ' + (err.message || 'Terjadi kesalahan'))
       window.setTimeout(() => setNotice(''), 4000)
     }
   }
@@ -1122,7 +1204,7 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
           ) : (
             <>
               {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} />}
-              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} />}
+              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} />}
               {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} />}
               {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
             </>

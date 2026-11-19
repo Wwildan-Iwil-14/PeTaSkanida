@@ -91,12 +91,12 @@ Setelah itu lanjut ke panduan utama: [`../README.md`](../README.md).
 | Tabel | Isi | Siapa yang mengakses |
 |---|---|---|
 | `req_pending` | Master — semua permintaan kunjungan yang masuk, termasuk penanda `dihubungi` (sudah/belum dihubungi admin) | Backend menulis; frontend membaca (real-time) |
-| `req_acc` | Permintaan yang **diterima** admin | Backend menulis; frontend membaca |
+| `req_acc` | Permintaan yang **diterima** admin dan belum diselesaikan (kunjungan aktif) | Backend menulis; frontend membaca |
 | `req_reject` | Permintaan yang **ditolak** admin | Backend menulis; frontend membaca |
-| `riwayat` | Arsip semua permintaan yang sudah diproses | Backend menulis; frontend membaca |
+| `riwayat` | Arsip kunjungan yang **sudah selesai** dan permintaan yang ditolak | Backend menulis; frontend membaca |
 | `admins` | Profil admin (nama, role) → terhubung ke `auth.users` | Hanya backend (service role); **login lewat Supabase Auth** |
 
-**Alur data:** tamu mengisi form → masuk `req_pending` → admin menerima (masuk `req_acc` + `riwayat`) atau menolak (masuk `req_reject` + `riwayat`). Data asli tetap tersimpan di `req_pending`.
+**Alur data:** tamu mengisi form → masuk `req_pending` → admin menerima (masuk `req_acc`) atau menolak (masuk `req_reject` + `riwayat`). Setelah kunjungan berlangsung, admin menekan **Selesai** pada menu Kelola Tamu → data dipindahkan dari `req_acc` ke `riwayat`. Data asli tetap tersimpan di `req_pending`.
 
 ---
 

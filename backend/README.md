@@ -174,7 +174,8 @@ backend/
 | GET | `/api/auth/me` | Ya | Cek profil admin dari token yang aktif |
 | POST | `/api/requests` | Tidak | Tamu mengirim permintaan kunjungan |
 | GET | `/api/requests` | Ya | Ambil semua permintaan beserta statusnya |
-| POST | `/api/requests/:id/approve` | Ya | Setujui permintaan |
+| POST | `/api/requests/:id/approve` | Ya | Setujui permintaan (masuk daftar kunjungan aktif) |
+| POST | `/api/requests/:id/complete` | Ya | Tandai kunjungan selesai → pindah ke Riwayat Kunjungan |
 | POST | `/api/requests/:id/reject` | Ya | Tolak permintaan |
 | PATCH | `/api/requests/:id/contacted` | Ya | Tandai tamu sudah/belum dihubungi (`{ "dihubungi": true }`) |
 
