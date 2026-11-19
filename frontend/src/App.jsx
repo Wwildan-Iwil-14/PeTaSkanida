@@ -742,7 +742,7 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   )
 }
 
-function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false }) {
+function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false, statusOptions = ['Semua', 'Pending', 'Diterima', 'Ditolak'] }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="relative flex-1">
@@ -777,7 +777,7 @@ function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFil
           aria-label="Filter status"
           className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:focus:border-indigo-500 sm:w-44"
         >
-          <option>Semua</option><option>Pending</option><option>Diterima</option><option>Ditolak</option>
+          {statusOptions.map(option => <option key={option}>{option}</option>)}
         </select>
       </div>
     </div>
@@ -870,7 +870,7 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Semua permintaan yang sudah diterima atau ditolak.</p>
     </div>
     <div className="mb-5">
-      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} />
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Diterima', 'Ditolak']} />
     </div>
     <Panel title="Riwayat request" subtitle={`${items.length} data telah diproses`}><RequestTable items={items} /></Panel>
   </>
