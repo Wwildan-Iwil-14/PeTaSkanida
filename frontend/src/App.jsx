@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, saveSession, clearSession, loadToken } from './lib/api'
 import { subscribeToRequests } from './lib/realtime'
+import { drawBarcode, downloadBarcode, BARCODE_CANVAS_ID } from './lib/barcode'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
   Search, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
@@ -8,7 +9,7 @@ import {
   CalendarCheck, Eye, EyeOff, MessageCircle,
   Loader2, AlertCircle, Moon, Sun, Copy, Check,
   CircleDashed, BadgeCheck, ArrowRight, ArrowLeft, Info, Mail,
-  Phone, Send, Plus, ChevronDown
+  Phone, Send, Plus, ChevronDown, Download, AlertTriangle, Camera
 } from 'lucide-react'
 
 const THEME_KEY = 'peta-skanida.theme'
@@ -427,8 +428,15 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
         waktu: form.time,
         jumlah: parseInt(form.people) || 1,
       })
+      const requestId = result?.request?.id
+      // Kode unik per permintaan dipakai sebagai isi barcode.
+      // ID database memastikan setiap orang mendapat barcode berbeda.
+      const kode = requestId
+        ? `REQ-${String(requestId).padStart(3, '0')}`
+        : `REQ-${Date.now()}`
       onSubmit({
-        id: result?.request?.id,
+        id: requestId,
+        kode,
         nama: form.name.trim(),
         email: form.email.trim(),
         no_hp: form.phone.trim(),
@@ -672,9 +680,60 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
   )
 }
 
-function GuestSuccessPage({ data, onAgain, onBack, theme, onToggleTheme }) {
+// Barcode unik untuk setiap permintaan, lengkap dengan tombol unduh.
+function BarcodeBlock({ value, saved, onDownloaded }) {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || !value) return
+    try {
+      drawBarcode(canvasRef.current, value, { scale: 3, height: 110, fontSize: 22 })
+    } catch {
+      // Jika nilai tidak didukung, biarkan kanvas kosong.
+    }
+  }, [value])
+
+  function handleDownload() {
+    if (downloadBarcode(value)) onDownloaded()
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/40 p-4 dark:border-blue-500/30 dark:bg-blue-500/5">
+      <p className="text-center text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-300">Barcode Kunjungan Kamu</p>
+      <p className="mt-1 text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+        Barcode ini unik untuk permintaan kamu. Simpan dan tunjukkan saat tiba di sekolah.
+      </p>
+      <div className="mt-3 flex justify-center overflow-x-auto rounded-xl bg-white p-3 dark:bg-slate-100">
+        <canvas ref={canvasRef} id={BARCODE_CANVAS_ID} className="max-w-full" aria-label={`Barcode ${value}`} role="img" />
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-200/70 transition hover:bg-blue-600 dark:shadow-blue-950/40"
+      >
+        <Download size={16} />
+        {saved ? 'Unduh Lagi Barcode' : 'Unduh Barcode'}
+      </button>
+      <p className="mt-2 text-center text-xs font-semibold text-rose-500 dark:text-rose-400">Kamu harus mengunduh barcode</p>
+      {saved ? (
+        <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 size={14} /> Barcode tersimpan. Kamu sudah boleh keluar dari halaman ini.
+        </p>
+      ) : (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-left dark:border-amber-500/30 dark:bg-amber-500/10">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500 dark:text-amber-400" />
+          <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">
+            <span className="font-bold">Peringatan:</span> Jika barcode tidak bisa diunduh, ada <span className="font-bold">opsi kedua</span> — ambil <span className="font-bold">screenshot</span> barcode ini lalu simpan di perangkatmu.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GuestSuccessPage({ data, onAgain, onBack, theme, onToggleTheme, saved, onDownloaded }) {
   const [copied, setCopied] = useState(false)
-  const ref = data?.id ? `REQ-${String(data.id).padStart(3, '0')}` : ''
+  const ref = data?.kode || (data?.id ? `REQ-${String(data.id).padStart(3, '0')}` : '')
 
   async function copyRef() {
     if (!ref) return
@@ -732,6 +791,8 @@ function GuestSuccessPage({ data, onAgain, onBack, theme, onToggleTheme }) {
               <p className="mt-2 text-center text-xs text-indigo-500/90 dark:text-indigo-300/80">Simpan kode ini untuk menanyakan status kunjungan Anda.</p>
             </div>
           )}
+
+          {ref && <BarcodeBlock value={ref} saved={saved} onDownloaded={onDownloaded} />}
 
           <dl className="mt-6 divide-y divide-slate-100 rounded-2xl border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
             {rows.map(([label, value]) => (
@@ -1242,12 +1303,58 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
   )
 }
 
+// Notifikasi sistem yang muncul saat tamu mencoba keluar sebelum barcode disimpan.
+function LeaveWarningModal({ onDownload, onScreenshot, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="leave-modal-title">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-start gap-3">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+            <AlertTriangle size={24} />
+          </div>
+          <div>
+            <h2 id="leave-modal-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">Barcode belum disimpan</h2>
+            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Notifikasi sistem</p>
+          </div>
+        </div>
+
+        <p className="mt-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          Kamu <span className="font-bold">wajib mengunduh barcode</span> terlebih dahulu sebelum keluar dari halaman ini. Barcode tersebut dipakai sebagai bukti kunjungan saat tiba di sekolah.
+        </p>
+
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-left dark:border-amber-500/30 dark:bg-amber-500/10">
+          <Camera size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+            <span className="font-bold">Opsi kedua:</span> jika barcode tidak bisa diunduh, silakan ambil <span className="font-bold">screenshot</span> barcode itu lalu simpan di perangkatmu.
+          </p>
+        </div>
+
+        <div className="mt-5 space-y-2.5">
+          <button type="button" onClick={onDownload} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200/70 transition hover:bg-blue-600 dark:shadow-blue-950/40">
+            <Download size={16} /> Unduh Barcode Sekarang
+          </button>
+          <button type="button" onClick={onScreenshot} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 dark:border-amber-500/30 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-amber-500/10">
+            <Camera size={15} /> Sudah simpan dengan screenshot
+          </button>
+          <button type="button" onClick={onClose} className="w-full rounded-xl py-2 text-sm font-semibold text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+            Kembali ke halaman
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu', 'tamu-success'
   const [adminName, setAdminName] = useState('')
   const [restoring, setRestoring] = useState(true)
   const [guestResult, setGuestResult] = useState(null)
   const [theme, setTheme] = useState(getInitialTheme)
+  // Barcode wajib disimpan sebelum tamu boleh meninggalkan halaman konfirmasi.
+  const [barcodeSaved, setBarcodeSaved] = useState(false)
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false)
+  const [pendingLeave, setPendingLeave] = useState(null)
 
   // Terapkan tema ke <html> dan simpan pilihan pengguna.
   useEffect(() => {
@@ -1264,6 +1371,62 @@ function App() {
   }, [theme])
 
   const toggleTheme = () => setTheme(current => (current === 'dark' ? 'light' : 'dark'))
+
+  // --- Pengunci halaman: barcode harus disimpan dulu sebelum keluar ---
+  const leaveBlocked = role === 'tamu-success' && !barcodeSaved
+  const leaveBlockedRef = useRef(leaveBlocked)
+  leaveBlockedRef.current = leaveBlocked
+
+  useEffect(() => {
+    if (!leaveBlocked) return undefined
+
+    function handleBeforeUnload(event) {
+      // Notifikasi sistem bawaan browser saat refresh, tutup tab, atau keluar situs.
+      event.preventDefault()
+      event.returnValue = ''
+      return ''
+    }
+
+    function handlePopState() {
+      if (!leaveBlockedRef.current) return
+      // Kembalikan posisi riwayat agar tamu tetap berada di halaman ini.
+      window.history.pushState({ petaBarcodeGuard: true }, '')
+      setPendingLeave(null)
+      setLeaveModalOpen(true)
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('popstate', handlePopState)
+    window.history.pushState({ petaBarcodeGuard: true }, '')
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [leaveBlocked])
+
+  // Dipakai tombol "Ajukan Permintaan Lain" & "Kembali ke Halaman Login".
+  function attemptLeave(action) {
+    if (barcodeSaved) {
+      action()
+      return
+    }
+    setPendingLeave(() => action)
+    setLeaveModalOpen(true)
+  }
+
+  // Buka kunci setelah barcode diunduh (atau disimpan via screenshot).
+  function unlockLeave() {
+    const action = pendingLeave
+    setBarcodeSaved(true)
+    setLeaveModalOpen(false)
+    setPendingLeave(null)
+    if (action) action()
+  }
+
+  function handleModalDownload() {
+    if (downloadBarcode(guestResult?.kode)) unlockLeave()
+  }
 
   // Pulihkan sesi admin dari token yang tersimpan di browser.
   // api.me() otomatis memperbarui token yang kedaluwarsa memakai refresh token.
@@ -1319,15 +1482,25 @@ function App() {
   if (role === 'admin-login') return <AdminLoginPage onSuccess={handleLoginSuccess} onBack={() => setRole(null)} theme={theme} onToggleTheme={toggleTheme} />
   if (role === 'tamu') return <GuestFormPage theme={theme} onToggleTheme={toggleTheme} onBack={() => setRole(null)} onSubmit={data => {
     setGuestResult(data)
+    setBarcodeSaved(false)
     setRole('tamu-success')
   }} />
-  if (role === 'tamu-success') return <GuestSuccessPage
-    data={guestResult}
-    theme={theme}
-    onToggleTheme={toggleTheme}
-    onAgain={() => { setGuestResult(null); setRole('tamu') }}
-    onBack={() => { setGuestResult(null); setRole(null) }}
-  />
+  if (role === 'tamu-success') return <>
+    <GuestSuccessPage
+      data={guestResult}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      saved={barcodeSaved}
+      onDownloaded={() => setBarcodeSaved(true)}
+      onAgain={() => attemptLeave(() => { setGuestResult(null); setBarcodeSaved(false); setRole('tamu') })}
+      onBack={() => attemptLeave(() => { setGuestResult(null); setBarcodeSaved(false); setRole(null) })}
+    />
+    {leaveModalOpen && <LeaveWarningModal
+      onDownload={handleModalDownload}
+      onScreenshot={unlockLeave}
+      onClose={() => { setLeaveModalOpen(false); setPendingLeave(null) }}
+    />}
+  </>
   return <AdminApp adminName={adminName} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
 }
 
