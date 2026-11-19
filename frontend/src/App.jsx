@@ -69,6 +69,7 @@ function mapRecord(r, status) {
     name: r.nama || '-',
     email: r.email || '',
     purpose: r.keperluan || '-',
+    keperluan: r.keperluan || '-',
     tujuan: r.tujuan || '-',
     date: r.tanggal || '',
     time: r.waktu || '',
@@ -668,11 +669,12 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-left text-sm">
+      <table className="w-full min-w-[900px] text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60 dark:text-slate-400">
           <tr>
             <th className="px-6 py-4 font-semibold">Pengunjung</th>
             <th className="px-6 py-4 font-semibold">Tujuan</th>
+            <th className="px-6 py-4 font-semibold">Keperluan</th>
             <th className="px-6 py-4 font-semibold">Jadwal</th>
             <th className="px-6 py-4 font-semibold">Jumlah</th>
             <th className="px-6 py-4 font-semibold">Status</th>
@@ -687,7 +689,8 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
                 <div className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</div>
                 <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.id} · {item.phone}</div>
               </td>
-              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.purpose}</td>
+              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.tujuan}</td>
+              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.keperluan}</td>
               <td className="px-6 py-4">
                 <div className="font-medium text-slate-700 dark:text-slate-300">{formatDate(item.date)}</div>
                 <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.time ? `${item.time} WIB` : '-'}</div>
