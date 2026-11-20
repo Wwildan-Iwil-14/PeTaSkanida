@@ -68,6 +68,16 @@ const formatDate = (value) => {
   })
 }
 
+// Tanggal hari ini dalam format YYYY-MM-DD (pakai zona waktu lokal,
+// bukan toISOString yang memakai UTC dan bisa bergeser sehari).
+const getTodayISO = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Mapping dari row database ke format yang dipakai UI
 function mapRecord(r, status) {
   return {
@@ -367,6 +377,7 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
   const [customTujuanOpen, setCustomTujuanOpen] = useState(false)
   const [customTujuan, setCustomTujuan] = useState('')
   const [error, setError] = useState('')
+  const today = getTodayISO()
   const [suratTugas, setSuratTugas] = useState(null)
   const [fileError, setFileError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -443,6 +454,10 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
 
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.date || !form.time || !form.keperluan.trim() || !finalTujuan.length) {
       setError('Lengkapi semua kolom bertanda * dan pilih minimal satu tujuan kunjungan.')
+      return
+    }
+    if (form.date < today) {
+      setError('Tanggal kunjungan tidak boleh sebelum hari ini.')
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
@@ -553,7 +568,7 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
                       value={form[key]}
                       onChange={e => setForm(current => ({ ...current, [key]: e.target.value }))}
                       placeholder={placeholder}
-                      min={type === 'number' ? 1 : undefined}
+                      min={type === 'number' ? 1 : type === 'date' ? today : undefined}
                       className={GUEST_FIELD}
                     />
                   </div>
