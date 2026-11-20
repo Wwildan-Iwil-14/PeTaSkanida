@@ -19,6 +19,64 @@ html.theme-transition *::after {
   transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
 }
 
+/* Html5Qrcode styling overrides & scanner aesthetics */
+#peta-qr-reader {
+  width: 100% !important;
+  border: none !important;
+  background: #020617 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+#peta-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  margin: 0 auto !important;
+  border-radius: 1rem !important;
+}
+
+#peta-qr-reader canvas {
+  border-radius: 1rem !important;
+}
+
+#peta-qr-reader img[alt="Info icon"],
+#peta-qr-reader__header_message,
+#peta-qr-reader__status_span {
+  display: none !important;
+}
+
+#peta-qr-reader__scan_region {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 240px;
+}
+
+#peta-qr-reader__scan_region video {
+  max-width: 100% !important;
+}
+
+@keyframes scanLaser {
+  0% {
+    top: 6%;
+    opacity: 0.85;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 6%;
+    opacity: 0.85;
+  }
+}
+
+.animate-scan-laser {
+  animation: scanLaser 2.4s ease-in-out infinite;
+}
+
 /* Cetak riwayat kunjungan: sembunyikan navigasi & tombol aksi. */
 .print-only { display: none; }
 

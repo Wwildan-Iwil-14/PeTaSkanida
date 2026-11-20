@@ -11,14 +11,15 @@ export const ROLE_DEFAULTS = {
   admin: [
     'dashboard',
     'request',
-    'tamu',
-    'riwayat',
+    'tamu_admin',
+    'riwayat_admin',
     'cetak_riwayat',
     'scan',
     'akun',
   ],
   super_admin: [
-    'riwayat',
+    'tamu_superadmin',
+    'riwayat_superadmin',
     'cetak_riwayat',
     'kunjungan_terkini',
     'kelola_akun',
@@ -34,8 +35,10 @@ export const FEATURE_KEYS = [
   'scan',
   'dashboard',
   'request',
-  'tamu',
-  'riwayat',
+  'tamu_superadmin',
+  'tamu_admin',
+  'riwayat_superadmin',
+  'riwayat_admin',
   'cetak_riwayat',
   'kelola_akun',
   'tambah_edit_akun',
@@ -49,8 +52,10 @@ export const FEATURE_LABELS = {
   scan: 'Scan QR',
   dashboard: 'Dashboard',
   request: 'Daftar Request',
-  tamu: 'Kelola Tamu',
-  riwayat: 'Riwayat Kunjungan',
+  tamu_superadmin: 'Kelola Tamu (superadmin)',
+  tamu_admin: 'Kelola Tamu (admin)',
+  riwayat_superadmin: 'Riwayat Kunjungan (superadmin)',
+  riwayat_admin: 'Riwayat Kunjungan (admin)',
   cetak_riwayat: 'Cetak Riwayat',
   kelola_akun: 'Kelola Semua Akun',
   tambah_edit_akun: 'Tambah/Edit Akun',
@@ -66,7 +71,13 @@ const FEATURE_ALIASES = {
 export const ROLES = ['petugas', 'admin', 'super_admin']
 
 /** Terjemahkan alias lama ke fitur baru. */
-function expandFeature(key) {
+function expandFeature(key, role) {
+  if (key === 'tamu') {
+    return role === 'super_admin' ? ['tamu_superadmin'] : ['tamu_admin']
+  }
+  if (key === 'riwayat') {
+    return role === 'super_admin' ? ['riwayat_superadmin'] : ['riwayat_admin']
+  }
   return FEATURE_ALIASES[key] || [key]
 }
 
@@ -76,7 +87,7 @@ function expandFeature(key) {
  */
 export function resolveFeatures(role, features) {
   if (!Array.isArray(features)) return ROLE_DEFAULTS[role] || []
-  const expanded = features.flatMap(expandFeature)
+  const expanded = features.flatMap(key => expandFeature(key, role))
   return [...new Set(expanded.filter(key => FEATURE_KEYS.includes(key)))]
 }
 
@@ -93,5 +104,11 @@ export function normalizeFeatures(value) {
 }
 
 export function isValidFeatureList(features) {
-  return features.every(key => FEATURE_KEYS.includes(key) || Boolean(FEATURE_ALIASES[key]))
+  return features.every(
+    key =>
+      FEATURE_KEYS.includes(key) ||
+      Boolean(FEATURE_ALIASES[key]) ||
+      key === 'tamu' ||
+      key === 'riwayat',
+  )
 }

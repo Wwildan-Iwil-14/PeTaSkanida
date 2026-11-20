@@ -129,7 +129,7 @@ router.post(
 router.post(
   '/admin',
   requireAdmin,
-  requireFeature('tamu'),
+  requireFeature('tamu_superadmin', 'tamu'),
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateRequestPayload(req.body)
     if (errors.length > 0) throw httpError(422, errors.join(' '))
@@ -260,7 +260,7 @@ router.post(
 router.post(
   '/:id/complete',
   requireAdmin,
-  requireFeature('tamu'),
+  requireFeature('tamu_superadmin', 'tamu_admin', 'tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const record = await loadPendingRecord(id)
@@ -295,7 +295,7 @@ router.post(
 router.patch(
   '/:id/contacted',
   requireAdmin,
-  requireFeature('tamu'),
+  requireFeature('tamu_superadmin', 'tamu_admin', 'tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const { dihubungi } = req.body || {}
@@ -334,7 +334,7 @@ router.patch(
 router.patch(
   '/:id',
   requireAdmin,
-  requireFeature('tamu'),
+  requireFeature('tamu_superadmin', 'tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const { payload, errors } = validateRequestPayload(req.body)
@@ -365,7 +365,7 @@ router.patch(
 router.delete(
   '/:id',
   requireAdmin,
-  requireFeature('tamu'),
+  requireFeature('tamu_superadmin', 'tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
 

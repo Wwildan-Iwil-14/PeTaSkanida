@@ -42,7 +42,7 @@ async function insertIfMissing(table, record) {
 router.post(
   '/',
   requireAdmin,
-  requireFeature('riwayat'),
+  requireFeature('riwayat_superadmin', 'riwayat'),
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateRequestPayload(req.body)
     if (errors.length > 0) throw httpError(422, errors.join(' '))
@@ -63,7 +63,7 @@ router.post(
 router.patch(
   '/:id',
   requireAdmin,
-  requireFeature('riwayat'),
+  requireFeature('riwayat_superadmin', 'riwayat'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const { payload, errors } = validateRequestPayload(req.body)
@@ -93,7 +93,7 @@ router.patch(
 router.delete(
   '/:id',
   requireAdmin,
-  requireFeature('riwayat'),
+  requireFeature('riwayat_superadmin', 'riwayat'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
 

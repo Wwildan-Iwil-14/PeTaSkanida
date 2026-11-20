@@ -70,10 +70,12 @@ function ThemeToggle({ theme, onToggle, className = '' }) {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, feature: 'dashboard' },
   { id: 'request', label: 'Daftar Request', icon: ClipboardList, feature: 'request' },
-  { id: 'tamu', label: 'Kelola Tamu', icon: Users, feature: 'tamu' },
+  { id: 'tamu-superadmin', label: 'Kelola Tamu (superadmin)', icon: Users, feature: 'tamu_superadmin' },
+  { id: 'tamu-admin', label: 'Kelola Tamu (admin)', icon: Users, feature: 'tamu_admin' },
   { id: 'kunjungan-terkini', label: 'Kunjungan Terkini', icon: CalendarClock, feature: 'kunjungan_terkini' },
   { id: 'kunjungan-mendatang', label: 'Kunjungan Mendatang', icon: CalendarDays, feature: 'kunjungan_mendatang' },
-  { id: 'riwayat', label: 'Riwayat Kunjungan', icon: History, feature: 'riwayat' },
+  { id: 'riwayat-superadmin', label: 'Riwayat Kunjungan (superadmin)', icon: History, feature: 'riwayat_superadmin' },
+  { id: 'riwayat-admin', label: 'Riwayat Kunjungan (admin)', icon: History, feature: 'riwayat_admin' },
   { id: 'scan', label: 'Scan Tamu', icon: ScanLine, feature: 'scan' },
   { id: 'users', label: 'Kelola Akun', icon: ShieldCheck, features: ['kelola_akun', 'tambah_edit_akun'] },
   { id: 'database', label: 'Database', icon: Database, feature: 'database' },
@@ -1444,7 +1446,7 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
                       )}
                     </>
                   )}
-                  {!showActions && !onComplete && !showCrud && (
+                  {!showActions && (!onComplete || item.status !== 'Diterima') && !showCrud && (
                     <span className="text-xs text-slate-400 dark:text-slate-500">{item.status === 'Selesai' ? 'Di riwayat' : 'Sudah diproses'}</span>
                   )}
                 </div>
@@ -1577,7 +1579,7 @@ function Dashboard({ requests, adminName, onGoTo }) {
   </>
 }
 
-function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange, onCreate, onUpdate, onDelete }) {
+function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange, onCreate, onUpdate, onDelete }) {
   const isPending = type === 'request'
   const [tamuView, setTamuView] = useState('semua')
   const [editing, setEditing] = useState(null)
@@ -1611,10 +1613,10 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
   return <>
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak. Klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan.'}</p>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title || (isPending ? 'Daftar Request' : 'Kelola Tamu')}</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{subtitle || (isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak. Klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan.')}</p>
       </div>
-      {!isPending && (
+      {!isPending && canCrud && (
         <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
           <UserPlus size={15} /> Tambah Tamu
         </button>
@@ -1679,9 +1681,9 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
         onUpdateStatus={onUpdateStatus}
         onToggleContacted={onToggleContacted}
         onComplete={!isPending ? onComplete : undefined}
-        showCrud={!isPending}
-        onEdit={item => setEditing(item)}
-        onDelete={item => setDeleting(item)}
+        showCrud={!isPending && canCrud}
+        onEdit={canCrud ? item => setEditing(item) : undefined}
+        onDelete={canCrud ? item => setDeleting(item) : undefined}
       />
     </Panel>
 
@@ -1722,7 +1724,7 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
   </>
 }
 
-function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete, canPrint = false, canEdit = true }) {
+function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete, canPrint = false, canEdit = true }) {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const items = visibleRequests
@@ -1736,8 +1738,8 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
   return <>
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Arsip kunjungan yang sudah ditandai selesai, beserta permintaan yang ditolak.</p>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title || 'Riwayat Kunjungan'}</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{subtitle || 'Arsip kunjungan yang sudah ditandai selesai, beserta permintaan yang ditolak.'}</p>
       </div>
       <div className="no-print flex flex-wrap items-center gap-2">
         {canPrint && (
@@ -1753,7 +1755,7 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
       </div>
     </div>
     <div className="print-only mb-4 border-b border-slate-300 pb-3">
-      <h1 className="text-xl font-bold text-slate-900">PeTa SKANIDA — Riwayat Kunjungan</h1>
+      <h1 className="text-xl font-bold text-slate-900">PeTa SKANIDA — {title || 'Riwayat Kunjungan'}</h1>
       <p className="mt-1 text-xs text-slate-600">Dicetak pada {new Date().toLocaleString('id-ID')} · {items.length} data</p>
     </div>
     <div className="no-print mb-5">
@@ -2179,7 +2181,17 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   }
 
   function goTo(id, status = 'Semua') {
-    setActive(id)
+    let targetId = id
+    if (id === 'tamu') {
+      targetId = features.includes('tamu_superadmin')
+        ? 'tamu-superadmin'
+        : (features.includes('tamu_admin') ? 'tamu-admin' : 'tamu-admin')
+    } else if (id === 'riwayat') {
+      targetId = features.includes('riwayat_superadmin')
+        ? 'riwayat-superadmin'
+        : (features.includes('riwayat_admin') ? 'riwayat-admin' : 'riwayat-admin')
+    }
+    setActive(targetId)
     setQuery('')
     setFilter(status)
     setSortOrder('Terkini')
@@ -2255,7 +2267,13 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     showNotice('Riwayat berhasil dihapus.')
   }
 
-  const pageTitle = navItems.find(item => item.id === active)?.label || 'Dashboard'
+  const pageTitle =
+    navItems.find(item => item.id === active)?.label ||
+    (active === 'tamu'
+      ? (features.includes('tamu_superadmin') ? 'Kelola Tamu (superadmin)' : 'Kelola Tamu (admin)')
+      : active === 'riwayat'
+        ? (features.includes('riwayat_superadmin') ? 'Riwayat Kunjungan (superadmin)' : 'Riwayat Kunjungan (admin)')
+        : 'Dashboard')
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] dark:bg-slate-950">
@@ -2285,19 +2303,24 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
       </aside>
 
       <main className="min-h-screen lg:ml-[260px]">
-        <header className="sticky top-0 z-30 flex h-[84px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90 sm:px-8">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-200 p-2 text-slate-600 dark:border-slate-700 dark:text-slate-300 lg:hidden"><Menu size={20} /></button>
-            <div><p className="text-xs text-slate-400 dark:text-slate-500">PeTa SKANIDA / Admin</p><h1 className="mt-1 font-bold text-slate-800 dark:text-slate-100">{pageTitle}</h1></div>
+        <header className="sticky top-0 z-30 flex h-[72px] sm:h-[84px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-3.5 sm:px-8 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <button onClick={() => setMobileOpen(true)} aria-label="Buka menu" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 p-2 text-slate-600 dark:border-slate-700 dark:text-slate-300 lg:hidden">
+              <Menu size={20} />
+            </button>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 leading-none">PeTa SKANIDA / Admin</p>
+              <h1 className="mt-1 text-base sm:text-xl font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">{pageTitle}</h1>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400 dark:text-slate-500">{ROLE_LABELS[role] || role}</p></div>
             <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><UserRound size={19} /></div>
           </div>
         </header>
 
-        <div className="mx-auto max-w-[1600px] p-4 sm:p-8">
+        <div className="mx-auto max-w-[1600px] p-3.5 sm:p-6 lg:p-8">
           {error && (
             <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
               <AlertCircle size={20} className="shrink-0" />
@@ -2313,12 +2336,93 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
           ) : (
             <>
               {active === 'dashboard' && features.includes('dashboard') && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} />}
-              {active === 'tamu' && features.includes('tamu') && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} onCreate={createGuest} onUpdate={updateGuest} onDelete={removeGuest} />}
-              {active === 'request' && features.includes('request') && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} sortOrder={sortOrder} onSortOrderChange={setSortOrder} />}
-              {active === 'riwayat' && features.includes('riwayat') && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onCreate={createHistory} onUpdate={updateHistory} onDelete={removeHistory} canPrint={features.includes('cetak_riwayat')} canEdit={role === 'admin'} />}
+              {((active === 'tamu-superadmin') || (active === 'tamu' && features.includes('tamu_superadmin'))) && features.includes('tamu_superadmin') && (
+                <ListingPage
+                  type="tamu"
+                  title="Kelola Tamu (superadmin)"
+                  subtitle="Daftar tamu yang telah disetujui atau ditolak dengan aksi edit dan hapus. Klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan."
+                  canCrud={true}
+                  visibleRequests={visibleRequests}
+                  query={query}
+                  onQueryChange={setQuery}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  contactFilter={contactFilter}
+                  onContactFilterChange={setContactFilter}
+                  onUpdateStatus={updateStatus}
+                  onToggleContacted={toggleContacted}
+                  onComplete={completeVisit}
+                  onCreate={createGuest}
+                  onUpdate={updateGuest}
+                  onDelete={removeGuest}
+                />
+              )}
+              {((active === 'tamu-admin') || (active === 'tamu' && !features.includes('tamu_superadmin') && features.includes('tamu_admin'))) && features.includes('tamu_admin') && (
+                <ListingPage
+                  type="tamu"
+                  title="Kelola Tamu (admin)"
+                  subtitle="Daftar tamu yang telah disetujui atau ditolak khusus admin (tanpa aksi edit dan hapus)."
+                  canCrud={false}
+                  visibleRequests={visibleRequests}
+                  query={query}
+                  onQueryChange={setQuery}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  contactFilter={contactFilter}
+                  onContactFilterChange={setContactFilter}
+                  onUpdateStatus={updateStatus}
+                  onToggleContacted={toggleContacted}
+                  onComplete={completeVisit}
+                />
+              )}
+              {active === 'request' && features.includes('request') && (
+                <ListingPage
+                  type="request"
+                  visibleRequests={visibleRequests}
+                  query={query}
+                  onQueryChange={setQuery}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  contactFilter={contactFilter}
+                  onContactFilterChange={setContactFilter}
+                  onUpdateStatus={updateStatus}
+                  onToggleContacted={toggleContacted}
+                  sortOrder={sortOrder}
+                  onSortOrderChange={setSortOrder}
+                />
+              )}
+              {((active === 'riwayat-superadmin') || (active === 'riwayat' && features.includes('riwayat_superadmin'))) && features.includes('riwayat_superadmin') && (
+                <HistoryPage
+                  title="Riwayat Kunjungan (superadmin)"
+                  subtitle="Arsip kunjungan yang sudah ditandai selesai beserta permintaan yang ditolak, dengan aksi edit dan hapus."
+                  visibleRequests={visibleRequests}
+                  query={query}
+                  onQueryChange={setQuery}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  onCreate={createHistory}
+                  onUpdate={updateHistory}
+                  onDelete={removeHistory}
+                  canPrint={features.includes('cetak_riwayat')}
+                  canEdit={true}
+                />
+              )}
+              {((active === 'riwayat-admin') || (active === 'riwayat' && !features.includes('riwayat_superadmin') && features.includes('riwayat_admin'))) && features.includes('riwayat_admin') && (
+                <HistoryPage
+                  title="Riwayat Kunjungan (admin)"
+                  subtitle="Arsip kunjungan yang sudah ditandai selesai beserta permintaan yang ditolak, khusus admin (tanpa aksi edit dan hapus)."
+                  visibleRequests={visibleRequests}
+                  query={query}
+                  onQueryChange={setQuery}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  canPrint={features.includes('cetak_riwayat')}
+                  canEdit={false}
+                />
+              )}
               {active === 'kunjungan-terkini' && features.includes('kunjungan_terkini') && <CurrentVisitsPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
               {active === 'kunjungan-mendatang' && features.includes('kunjungan_mendatang') && <UpcomingVisitsPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
-              {active === 'scan' && features.includes('scan') && <ScanPage scans={scans} onScanned={fetchScans} />}
+              {active === 'scan' && features.includes('scan') && <ScanPage scans={scans} onScanned={fetchScans} onCompleteVisit={completeVisit} />}
               {active === 'users' && (features.includes('kelola_akun') || features.includes('tambah_edit_akun')) && <UsersPage users={users} currentUserId={currentUserId} canManage={features.includes('tambah_edit_akun')} onCreate={createUser} onUpdate={updateUser} onDelete={removeUser} />}
               {active === 'database' && features.includes('database') && <DatabasePage onNotice={showNotice} />}
               {active === 'akun' && features.includes('akun') && <AccountPage admin={admin} features={features} />}
