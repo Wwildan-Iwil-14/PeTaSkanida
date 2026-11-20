@@ -21,6 +21,13 @@ import {
 
 const THEME_KEY = 'peta-skanida.theme'
 
+// Kontak customer service. Bisa diubah lewat file frontend/.env
+// tanpa perlu mengubah kode.
+const CS_EMAIL = (import.meta.env.VITE_CS_EMAIL || '').trim() || 'cs@petaskanida.sch.id'
+const CS_WHATSAPP = (import.meta.env.VITE_CS_WHATSAPP || '').trim() || '6280000000000'
+const CS_WHATSAPP_MESSAGE = (import.meta.env.VITE_CS_WHATSAPP_MESSAGE || '').trim()
+  || 'Halo, saya ingin bertanya tentang kunjungan di PeTa SKANIDA.'
+
 // Surat tugas: opsional, PDF, maksimal 4 MB.
 const SURAT_TUGAS_MAX_SIZE = 4 * 1024 * 1024
 const SURAT_TUGAS_ACCEPT = '.pdf,application/pdf'
@@ -177,6 +184,7 @@ function ThemeToggleCorner({ theme, onToggleTheme }) {
 }
 
 function LoginPage({ onSelect, theme, onToggleTheme }) {
+  const [contactOpen, setContactOpen] = useState(false)
   return (
     <div className="relative grid min-h-screen bg-[#f5f7fb] dark:bg-slate-950 lg:grid-cols-2">
       <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
@@ -230,6 +238,55 @@ function LoginPage({ onSelect, theme, onToggleTheme }) {
               <ChevronRight className="ml-auto shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-500 dark:text-slate-600" size={20} />
             </button>
           </div>
+
+          <div className="mt-7 border-t border-slate-200 pt-5 text-center dark:border-slate-800">
+            <p className="text-xs text-slate-400 dark:text-slate-500">Butuh bantuan atau ada pertanyaan?</p>
+            <button
+              type="button"
+              onClick={() => setContactOpen(true)}
+              className="mt-2 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+            >
+              <MessageCircle size={16} /> Hubungi customer service
+            </button>
+          </div>
+        </div>
+      </div>
+      {contactOpen && <ContactModal onClose={() => setContactOpen(false)} />}
+    </div>
+  )
+}
+
+function ContactModal({ onClose }) {
+  const waNumber = CS_WHATSAPP.replace(/[^0-9]/g, '')
+  const waHref = `https://wa.me/${waNumber}?text=${encodeURIComponent(CS_WHATSAPP_MESSAGE)}`
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="cs-modal-title">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 id="cs-modal-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">Hubungi Customer Service</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Pilih cara menghubungi tim PeTa SKANIDA.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Tutup" className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"><X size={18} /></button>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <a href={`mailto:${CS_EMAIL}`} className="group flex items-center gap-4 rounded-xl border border-slate-200 p-4 transition hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-slate-700 dark:hover:border-indigo-500 dark:hover:bg-indigo-500/10">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><Mail size={20} /></span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">Via Email</span>
+              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{CS_EMAIL}</span>
+            </span>
+            <ChevronRight className="ml-auto shrink-0 text-slate-300 group-hover:text-indigo-500 dark:text-slate-600" size={18} />
+          </a>
+          <a href={waHref} target="_blank" rel="noreferrer" className="group flex items-center gap-4 rounded-xl border border-slate-200 p-4 transition hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-slate-700 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"><MessageCircle size={20} /></span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">Via WhatsApp</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">+{waNumber}</span>
+            </span>
+            <ChevronRight className="ml-auto shrink-0 text-slate-300 group-hover:text-emerald-500 dark:text-slate-600" size={18} />
+          </a>
         </div>
       </div>
     </div>
@@ -395,7 +452,7 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
 
   const fields = [
     { key: 'name', label: 'Nama / Instansi', type: 'text', placeholder: 'Nama lengkap atau instansi', icon: UserRound, required: true },
-    { key: 'email', label: 'Email', type: 'email', placeholder: 'nama@email.com', icon: Mail, required: true },
+    { key: 'email', label: 'Email (opsional)', type: 'email', placeholder: 'nama@email.com', icon: Mail, required: false },
     { key: 'phone', label: 'Nomor Handphone', type: 'tel', placeholder: '08xxxxxxxxxx', icon: Phone, required: true },
     { key: 'date', label: 'Tanggal Kunjungan', type: 'date', placeholder: '', icon: CalendarDays, required: true },
     { key: 'time', label: 'Waktu Kunjungan', type: 'time', placeholder: '', icon: Clock3, required: true },
@@ -463,7 +520,7 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
     const draftTujuan = customTujuan.trim()
     if (draftTujuan && !finalTujuan.includes(draftTujuan)) finalTujuan.push(draftTujuan)
 
-    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.date || !form.time || !form.keperluan.trim() || !finalTujuan.length) {
+    if (!form.name.trim() || !form.phone.trim() || !form.date || !form.time || !form.keperluan.trim() || !finalTujuan.length) {
       setError('Lengkapi semua kolom bertanda * dan pilih minimal satu tujuan kunjungan.')
       return
     }
@@ -471,7 +528,7 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
       setError('Tanggal kunjungan tidak boleh sebelum hari ini.')
       return
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       setError('Format alamat email tidak valid, contoh: nama@email.com.')
       return
     }
@@ -981,7 +1038,7 @@ function Panel({ title, subtitle, action, children }) {
 
 const RECORD_FIELDS = [
   { key: 'nama', label: 'Nama / Instansi', type: 'text', required: true },
-  { key: 'email', label: 'Email', type: 'email', required: true },
+  { key: 'email', label: 'Email (opsional)', type: 'email', required: false },
   { key: 'no_hp', label: 'Nomor Handphone', type: 'tel', required: true },
   { key: 'tujuan', label: 'Tujuan', type: 'text', required: true },
   { key: 'keperluan', label: 'Keperluan', type: 'text', required: true },

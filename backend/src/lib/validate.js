@@ -26,7 +26,10 @@ export function validateRequestPayload(body = {}) {
   }
 
   if (!payload.nama) errors.push('Nama / instansi wajib diisi.')
-  if (!EMAIL_PATTERN.test(payload.email)) errors.push('Format alamat email tidak valid.')
+  // Email bersifat opsional untuk tamu; bila diisi tetap harus valid.
+  if (payload.email && !EMAIL_PATTERN.test(payload.email)) {
+    errors.push('Format alamat email tidak valid.')
+  }
   if (!PHONE_PATTERN.test(payload.no_hp)) errors.push('Nomor HP tidak valid.')
   if (!payload.tujuan) errors.push('Tujuan wajib diisi.')
   if (!payload.keperluan) errors.push('Keperluan wajib diisi.')
