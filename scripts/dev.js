@@ -2,7 +2,8 @@
  * Menjalankan frontend dan backend sekaligus dari root repository.
  * Tidak membutuhkan dependency tambahan.
  */
-import { spawn } from 'node:child_process'
+import { spawn, execFileSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,6 +16,23 @@ const targets = [
 ]
 
 const children = []
+
+// Pastikan dependency sudah terpasang sebelum menjalankan server.
+// Tanpa ini, backend akan crash dengan ERR_MODULE_NOT_FOUND (express)
+// dan frontend hanya mendapat ECONNREFUSED / HTTP 500 saat login.
+for (const target of targets) {
+  if (fs.existsSync(path.join(target.cwd, 'node_modules'))) continue
+
+  process.stdout.write(`[${target.name}] node_modules belum ada, menjalankan npm install...\n`)
+  try {
+    execFileSync('npm', ['install'], { cwd: target.cwd, stdio: 'inherit', shell: process.platform === 'win32' })
+  } catch {
+    process.stderr.write(
+      `[${target.name}] Gagal memasang dependency. Jalankan "npm --prefix ${path.relative(root, target.cwd)} install" secara manual.\n`,
+    )
+    process.exit(1)
+  }
+}
 
 for (const target of targets) {
   const child = spawn('npm run dev', {
