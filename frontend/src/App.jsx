@@ -834,10 +834,11 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] text-left text-sm">
+      <table className="w-full min-w-[1040px] text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60 dark:text-slate-400">
           <tr>
             <th className="px-6 py-4 font-semibold">Pengunjung</th>
+            <th className="px-6 py-4 font-semibold">Email</th>
             <th className="px-6 py-4 font-semibold">Tujuan</th>
             <th className="px-6 py-4 font-semibold">Keperluan</th>
             <th className="px-6 py-4 font-semibold">Jadwal</th>
@@ -853,6 +854,18 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
               <td className="px-6 py-4">
                 <div className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</div>
                 <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.id} · {item.phone}</div>
+              </td>
+              <td className="px-6 py-4">
+                {item.email ? (
+                  <a
+                    href={`mailto:${item.email}`}
+                    title={item.email}
+                    className="inline-flex max-w-[220px] items-center gap-1.5 text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+                  >
+                    <Mail size={14} className="shrink-0" />
+                    <span className="truncate">{item.email}</span>
+                  </a>
+                ) : <span className="text-slate-400 dark:text-slate-500">-</span>}
               </td>
               <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.tujuan}</td>
               <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.keperluan}</td>
@@ -1000,7 +1013,7 @@ function Dashboard({ requests, adminName, onGoTo }) {
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {upcoming.length ? upcoming.map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
             <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><CalendarDays size={19} /></div>
-            <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
+            <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</p><p className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Mail size={13} className="shrink-0" /><span className="truncate">{item.email || '-'}</span></p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
           </div>) : <p className="px-5 py-10 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada jadwal mendatang.</p>}
         </div>
       </Panel>
