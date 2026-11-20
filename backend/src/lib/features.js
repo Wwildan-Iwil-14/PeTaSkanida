@@ -21,7 +21,8 @@ export const ROLE_DEFAULTS = {
     'riwayat',
     'cetak_riwayat',
     'kunjungan_terkini',
-    'pengguna',
+    'kelola_akun',
+    'tambah_edit_akun',
     'database',
     'akun',
   ],
@@ -36,7 +37,8 @@ export const FEATURE_KEYS = [
   'tamu',
   'riwayat',
   'cetak_riwayat',
-  'pengguna',
+  'kelola_akun',
+  'tambah_edit_akun',
   'database',
   'akun',
 ]
@@ -50,12 +52,23 @@ export const FEATURE_LABELS = {
   tamu: 'Kelola Tamu',
   riwayat: 'Riwayat Kunjungan',
   cetak_riwayat: 'Cetak Riwayat',
-  pengguna: 'Kelola Pengguna',
+  kelola_akun: 'Kelola Semua Akun',
+  tambah_edit_akun: 'Tambah/Edit Akun',
   database: 'Kelola Database',
   akun: 'Akun Saya',
 }
 
+// Alias fitur lama agar data yang sudah tersimpan tetap terbaca.
+const FEATURE_ALIASES = {
+  pengguna: ['kelola_akun', 'tambah_edit_akun'],
+}
+
 export const ROLES = ['petugas', 'admin', 'super_admin']
+
+/** Terjemahkan alias lama ke fitur baru. */
+function expandFeature(key) {
+  return FEATURE_ALIASES[key] || [key]
+}
 
 /**
  * Tentukan fitur efektif sebuah akun.
@@ -63,7 +76,8 @@ export const ROLES = ['petugas', 'admin', 'super_admin']
  */
 export function resolveFeatures(role, features) {
   if (!Array.isArray(features)) return ROLE_DEFAULTS[role] || []
-  return [...new Set(features.filter(key => FEATURE_KEYS.includes(key)))]
+  const expanded = features.flatMap(expandFeature)
+  return [...new Set(expanded.filter(key => FEATURE_KEYS.includes(key)))]
 }
 
 /** Normalisasi input fitur dari body request (array atau string dipisah koma). */
@@ -79,5 +93,5 @@ export function normalizeFeatures(value) {
 }
 
 export function isValidFeatureList(features) {
-  return features.every(key => FEATURE_KEYS.includes(key))
+  return features.every(key => FEATURE_KEYS.includes(key) || Boolean(FEATURE_ALIASES[key]))
 }

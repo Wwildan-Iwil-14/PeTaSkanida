@@ -67,7 +67,7 @@ const navItems = [
   { id: 'kunjungan-mendatang', label: 'Kunjungan Mendatang', icon: CalendarDays, feature: 'kunjungan_mendatang' },
   { id: 'riwayat', label: 'Riwayat Kunjungan', icon: History, feature: 'riwayat' },
   { id: 'scan', label: 'Scan Tamu', icon: ScanLine, feature: 'scan' },
-  { id: 'users', label: 'Pengguna', icon: ShieldCheck, feature: 'pengguna' },
+  { id: 'users', label: 'Kelola Akun', icon: ShieldCheck, features: ['kelola_akun', 'tambah_edit_akun'] },
   { id: 'database', label: 'Database', icon: Database, feature: 'database' },
   { id: 'akun', label: 'Akun Saya', icon: UserCog, feature: 'akun' },
 ]
@@ -1193,7 +1193,7 @@ function ConfirmModal({ title, message, onConfirm, onClose }) {
   )
 }
 
-function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
+function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId, canManage = true }) {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
 
@@ -1211,9 +1211,13 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pengguna</h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Kelola akun petugas, admin, dan super admin beserta fitur yang boleh diakses.</p>
       </div>
-      <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
-        <UserPlus size={15} /> Tambah Pengguna
-      </button>
+      {canManage && (
+        <div className="no-print flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
+            <UserPlus size={15} /> Tambah Akun
+          </button>
+        </div>
+      )}
     </div>
 
     <Panel title="Daftar pengguna" subtitle={`${users.length} akun terdaftar`}>
@@ -1227,7 +1231,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
                 <th className="px-6 py-4 font-semibold">Role</th>
                 <th className="px-6 py-4 font-semibold">Fitur</th>
                 <th className="px-6 py-4 font-semibold">Dibuat</th>
-                <th className="px-6 py-4 text-right font-semibold">Aksi</th>
+                {canManage && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1253,12 +1257,14 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">{user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => setEditing(user)} title="Edit pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"><Pencil size={13} /> Edit</button>
-                      <button type="button" onClick={() => setDeleting(user)} title="Hapus pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"><Trash2 size={13} /> Hapus</button>
-                    </div>
-                  </td>
+                  {canManage && (
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setEditing(user)} title="Edit pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"><Pencil size={13} /> Edit</button>
+                        <button type="button" onClick={() => setDeleting(user)} title="Hapus pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"><Trash2 size={13} /> Hapus</button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -1267,7 +1273,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
       ) : <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada pengguna.</div>}
     </Panel>
 
-    {editing && (
+    {editing && canManage && (
       <FormModal
         title={editing === 'new' ? 'Tambah Pengguna' : 'Edit Pengguna'}
         subtitle={editing === 'new' ? 'Buat akun petugas / admin / super admin baru.' : `Ubah data ${editing.nama}.`}
@@ -1284,7 +1290,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
       />
     )}
 
-    {deleting && (
+    {deleting && canManage && (
       <ConfirmModal
         title="Hapus pengguna?"
         message={`Akun ${deleting.nama} akan dihapus dan tidak bisa lagi login ke aplikasi.`}
@@ -1950,7 +1956,11 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   const features = resolveFeatures(role, admin?.features)
   const featureKey = features.join('|')
   const allowedNav = useMemo(
-    () => navItems.filter(item => features.includes(item.feature)),
+    () => navItems.filter(item =>
+      item.features
+        ? item.features.some(feature => features.includes(feature))
+        : features.includes(item.feature),
+    ),
     [featureKey],
   )
   const [active, setActive] = useState(() => allowedNav[0]?.id || 'akun')
@@ -2034,7 +2044,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
 
   useEffect(() => {
     fetchData()
-    if (features.includes('pengguna')) fetchUsers()
+    if (features.includes('kelola_akun') || features.includes('tambah_edit_akun')) fetchUsers()
     api.me().then(({ admin: sessionAdmin }) => setCurrentUserId(sessionAdmin?.userId || '')).catch(() => {})
 
     // Berlangganan perubahan real-time dari database.
@@ -2251,7 +2261,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
               {active === 'kunjungan-terkini' && features.includes('kunjungan_terkini') && <CurrentVisitsPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
               {active === 'kunjungan-mendatang' && features.includes('kunjungan_mendatang') && <UpcomingVisitsPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
               {active === 'scan' && features.includes('scan') && <ScanPage scans={scans} onScanned={fetchScans} />}
-              {active === 'users' && features.includes('pengguna') && <UsersPage users={users} currentUserId={currentUserId} onCreate={createUser} onUpdate={updateUser} onDelete={removeUser} />}
+              {active === 'users' && (features.includes('kelola_akun') || features.includes('tambah_edit_akun')) && <UsersPage users={users} currentUserId={currentUserId} canManage={features.includes('tambah_edit_akun')} onCreate={createUser} onUpdate={updateUser} onDelete={removeUser} />}
               {active === 'database' && features.includes('database') && <DatabasePage onNotice={showNotice} />}
               {active === 'akun' && features.includes('akun') && <AccountPage admin={admin} features={features} />}
             </>

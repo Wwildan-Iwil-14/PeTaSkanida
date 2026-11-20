@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { httpError } from '../lib/httpError.js'
 import { validateAdminPayload } from '../lib/validate.js'
-import { requireAdmin, requireRole } from '../middleware/auth.js'
+import { requireAdmin, requireFeature, requireRole } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -59,6 +59,7 @@ router.use(requireAdmin, requireRole('super_admin'))
  */
 router.get(
   '/',
+  requireFeature('kelola_akun', 'tambah_edit_akun'),
   asyncHandler(async (req, res) => {
     const users = await listProfiles()
     res.json({ users })
@@ -71,6 +72,7 @@ router.get(
  */
 router.post(
   '/',
+  requireFeature('tambah_edit_akun'),
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateAdminPayload(req.body, { isCreate: true })
     if (errors.length > 0) throw httpError(422, errors.join(' '))
@@ -140,6 +142,7 @@ router.post(
  */
 router.patch(
   '/:id',
+  requireFeature('tambah_edit_akun'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const current = await findProfile(id)
@@ -195,6 +198,7 @@ router.patch(
  */
 router.delete(
   '/:id',
+  requireFeature('tambah_edit_akun'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const profile = await findProfile(id)
