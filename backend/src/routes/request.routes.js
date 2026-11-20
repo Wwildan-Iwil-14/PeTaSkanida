@@ -5,7 +5,7 @@ import { httpError } from '../lib/httpError.js'
 import { validateRequestPayload } from '../lib/validate.js'
 import { uploadSuratTugas as sendToStorage } from '../lib/storage.js'
 import { uploadSuratTugas as uploadSuratTugasMiddleware } from '../middleware/upload.js'
-import { requireAdmin } from '../middleware/auth.js'
+import { requireAdmin, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -129,6 +129,7 @@ router.post(
 router.post(
   '/admin',
   requireAdmin,
+  requireFeature('tamu'),
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateRequestPayload(req.body)
     if (errors.length > 0) throw httpError(422, errors.join(' '))
@@ -210,6 +211,7 @@ router.get(
 router.post(
   '/:id/approve',
   requireAdmin,
+  requireFeature('request'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const record = await loadPendingRecord(id)
@@ -230,6 +232,7 @@ router.post(
 router.post(
   '/:id/reject',
   requireAdmin,
+  requireFeature('request'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const record = await loadPendingRecord(id)
@@ -257,6 +260,7 @@ router.post(
 router.post(
   '/:id/complete',
   requireAdmin,
+  requireFeature('tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const record = await loadPendingRecord(id)
@@ -291,6 +295,7 @@ router.post(
 router.patch(
   '/:id/contacted',
   requireAdmin,
+  requireFeature('tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const { dihubungi } = req.body || {}
@@ -329,6 +334,7 @@ router.patch(
 router.patch(
   '/:id',
   requireAdmin,
+  requireFeature('tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const { payload, errors } = validateRequestPayload(req.body)
@@ -359,6 +365,7 @@ router.patch(
 router.delete(
   '/:id',
   requireAdmin,
+  requireFeature('tamu'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
 

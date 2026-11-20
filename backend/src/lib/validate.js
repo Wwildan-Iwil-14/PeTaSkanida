@@ -1,3 +1,5 @@
+import { ROLES, isValidFeatureList, normalizeFeatures } from './features.js'
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_PATTERN = /^[0-9+()\-\s]{8,}$/
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -44,17 +46,23 @@ export function validateRequestPayload(body = {}) {
  */
 export function validateAdminPayload(body = {}, { isCreate = false } = {}) {
   const errors = []
+  const rawFeatures = normalizeFeatures(body.features)
   const payload = {
     nama: text(body.nama),
     email: text(body.email),
     role: text(body.role) || 'admin',
     password: typeof body.password === 'string' ? body.password : '',
+    // null = pakai fitur bawaan role.
+    features: rawFeatures === undefined ? null : rawFeatures,
   }
 
   if (!payload.nama) errors.push('Nama petugas wajib diisi.')
   if (!EMAIL_PATTERN.test(payload.email)) errors.push('Format alamat email tidak valid.')
-  if (!['admin', 'petugas'].includes(payload.role)) {
-    errors.push('Role harus admin atau petugas.')
+  if (!ROLES.includes(payload.role)) {
+    errors.push('Role harus petugas, admin, atau super_admin.')
+  }
+  if (payload.features !== null && !isValidFeatureList(payload.features)) {
+    errors.push('Ada fitur akun yang tidak dikenal.')
   }
   if (isCreate && payload.password.length < 6) {
     errors.push('Password minimal 6 karakter.')

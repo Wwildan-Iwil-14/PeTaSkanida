@@ -236,6 +236,19 @@ export const api = {
 
   deleteAdminUser: id =>
     authedRequest(`/admin/users/${id}`, { method: 'DELETE', token: currentToken() }),
+
+  // ---- Kelola database (khusus super admin) ----
+
+  databaseStats: () => authedRequest('/admin/database/stats', { token: currentToken() }),
+
+  databaseBackup: () => authedRequest('/admin/database/backup', { token: currentToken() }),
+
+  cleanScanLogs: days =>
+    authedRequest('/admin/database/scan-logs/clean', {
+      method: 'POST',
+      body: { days },
+      token: currentToken(),
+    }),
 }
 
 export { BASE_URL as API_BASE_URL }

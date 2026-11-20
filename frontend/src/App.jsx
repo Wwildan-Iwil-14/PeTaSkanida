@@ -5,6 +5,9 @@ import { drawBarcode, downloadBarcode, BARCODE_CANVAS_ID } from './lib/barcode'
 import { drawQr, QR_CANVAS_ID } from './lib/qr'
 import { ScanPage, ScanAlerts, getDeviceId, notifySound } from './ScanPage'
 import {
+  ROLES, ROLE_LABELS, FEATURES, ROLE_DEFAULTS, resolveFeatures, featureLabel,
+} from './lib/features'
+import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
   Search, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
   ArrowUpRight, ChevronRight, UserRound, Filter, ShieldCheck,
@@ -12,7 +15,8 @@ import {
   Loader2, AlertCircle, Moon, Sun, Copy, Check,
   CircleDashed, BadgeCheck, ArrowRight, ArrowLeft, Info, Mail,
   Phone, Send, Plus, ChevronDown, Download, AlertTriangle, Camera,
-  Pencil, Trash2, UserPlus, FileText, UploadCloud, ScanLine
+  Pencil, Trash2, UserPlus, FileText, UploadCloud, ScanLine,
+  Database, Printer, CalendarClock, UserCog
 } from 'lucide-react'
 
 const THEME_KEY = 'peta-skanida.theme'
@@ -56,12 +60,16 @@ function ThemeToggle({ theme, onToggle, className = '' }) {
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'request', label: 'Daftar Request', icon: ClipboardList },
-  { id: 'tamu', label: 'Kelola Tamu', icon: Users },
-  { id: 'riwayat', label: 'Riwayat Kunjungan', icon: History },
-  { id: 'scan', label: 'Scan Tamu', icon: ScanLine },
-  { id: 'users', label: 'Pengguna', icon: ShieldCheck },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, feature: 'dashboard' },
+  { id: 'request', label: 'Daftar Request', icon: ClipboardList, feature: 'request' },
+  { id: 'tamu', label: 'Kelola Tamu', icon: Users, feature: 'tamu' },
+  { id: 'kunjungan-terkini', label: 'Kunjungan Terkini', icon: CalendarClock, feature: 'kunjungan_terkini' },
+  { id: 'kunjungan-mendatang', label: 'Kunjungan Mendatang', icon: CalendarDays, feature: 'kunjungan_mendatang' },
+  { id: 'riwayat', label: 'Riwayat Kunjungan', icon: History, feature: 'riwayat' },
+  { id: 'scan', label: 'Scan Tamu', icon: ScanLine, feature: 'scan' },
+  { id: 'users', label: 'Pengguna', icon: ShieldCheck, feature: 'pengguna' },
+  { id: 'database', label: 'Database', icon: Database, feature: 'database' },
+  { id: 'akun', label: 'Akun Saya', icon: UserCog, feature: 'akun' },
 ]
 
 const formatDate = (value) => {
@@ -1007,10 +1015,13 @@ const USER_FIELDS = [
     label: 'Role',
     type: 'select',
     required: true,
-    options: [
-      { value: 'admin', label: 'Admin' },
-      { value: 'petugas', label: 'Petugas' },
-    ],
+    options: ROLES.map(role => ({ value: role, label: ROLE_LABELS[role] })),
+  },
+  {
+    key: 'features',
+    label: 'Fitur akun',
+    type: 'features',
+    hint: 'Fitur yang dicentang boleh diakses akun ini. Menentukan menu yang tampil.',
   },
 ]
 
@@ -1019,13 +1030,37 @@ function FormModal({ title, subtitle, fields, initial = {}, onSave, onClose }) {
     const base = { ...initial }
     for (const field of fields) {
       if (base[field.key] === undefined || base[field.key] === null) {
-        base[field.key] = field.type === 'number' ? 1 : ''
+        base[field.key] = field.type === 'number' ? 1 : field.type === 'features' ? [] : ''
+      }
+      if (field.type === 'features' && !Array.isArray(base[field.key])) {
+        base[field.key] = resolveFeatures(base.role, base[field.key])
       }
     }
     return base
   })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Ganti role → sesuaikan centang fitur dengan default role tersebut.
+  function handleChange(key, value) {
+    setValues(current => {
+      const next = { ...current, [key]: value }
+      if (key === 'role' && fields.some(field => field.type === 'features')) {
+        next.features = [...(ROLE_DEFAULTS[value] || [])]
+      }
+      return next
+    })
+  }
+
+  function toggleFeature(key) {
+    setValues(current => {
+      const owned = Array.isArray(current.features) ? current.features : []
+      return {
+        ...current,
+        features: owned.includes(key) ? owned.filter(item => item !== key) : [...owned, key],
+      }
+    })
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -1053,15 +1088,35 @@ function FormModal({ title, subtitle, fields, initial = {}, onSave, onClose }) {
 
         <form onSubmit={handleSubmit} className="mt-5 grid gap-3.5 sm:grid-cols-2">
           {fields.map(field => (
-            <div key={field.key} className={field.key === 'keperluan' ? 'sm:col-span-2' : ''}>
+            <div key={field.key} className={['keperluan', 'features'].includes(field.key) ? 'sm:col-span-2' : ''}>
               <label htmlFor={`form-${field.key}`} className="mb-1.5 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                 {field.label} {field.required && <span className="text-indigo-500">*</span>}
               </label>
-              {field.type === 'select' ? (
+              {field.type === 'features' ? (
+                <div id={`form-${field.key}`} className="grid gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700 sm:grid-cols-2">
+                  {FEATURES.map(feature => {
+                    const checked = (values.features || []).includes(feature.key)
+                    return (
+                      <label key={feature.key} className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 transition ${checked ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleFeature(feature.key)}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400"
+                        />
+                        <span>
+                          <span className="block text-[12px] font-semibold text-slate-700 dark:text-slate-200">{feature.label}</span>
+                          <span className="block text-[10px] leading-tight text-slate-400 dark:text-slate-500">{feature.hint}</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              ) : field.type === 'select' ? (
                 <select
                   id={`form-${field.key}`}
                   value={values[field.key] ?? ''}
-                  onChange={e => setValues(current => ({ ...current, [field.key]: e.target.value }))}
+                  onChange={e => handleChange(field.key, e.target.value)}
                   required={field.required}
                   className={FIELD}
                 >
@@ -1154,7 +1209,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pengguna</h2>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Kelola akun admin dan petugas yang bisa mengakses aplikasi.</p>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Kelola akun petugas, admin, dan super admin beserta fitur yang boleh diakses.</p>
       </div>
       <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
         <UserPlus size={15} /> Tambah Pengguna
@@ -1170,6 +1225,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
                 <th className="px-6 py-4 font-semibold">Nama</th>
                 <th className="px-6 py-4 font-semibold">Email</th>
                 <th className="px-6 py-4 font-semibold">Role</th>
+                <th className="px-6 py-4 font-semibold">Fitur</th>
                 <th className="px-6 py-4 font-semibold">Dibuat</th>
                 <th className="px-6 py-4 text-right font-semibold">Aksi</th>
               </tr>
@@ -1182,7 +1238,20 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
                     {user.user_id === currentUserId && <span className="mt-1 inline-block text-[10px] font-semibold text-indigo-500">Akun Anda</span>}
                   </td>
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.email || '-'}</td>
-                  <td className="px-6 py-4"><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600 dark:bg-slate-800 dark:text-slate-300">{user.role || 'admin'}</span></td>
+                  <td className="px-6 py-4"><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ROLE_LABELS[user.role] || user.role || 'Admin'}</span></td>
+                  <td className="px-6 py-4">
+                    <div className="flex max-w-[260px] flex-wrap gap-1">
+                      {(user.features === null || user.features === undefined
+                        ? resolveFeatures(user.role, null)
+                        : resolveFeatures(user.role, user.features)
+                      ).slice(0, 4).map(key => (
+                        <span key={key} className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">{featureLabel(key)}</span>
+                      ))}
+                      {(resolveFeatures(user.role, user.features).length > 4) && (
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">+{resolveFeatures(user.role, user.features).length - 4}</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">{user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2">
@@ -1201,9 +1270,11 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
     {editing && (
       <FormModal
         title={editing === 'new' ? 'Tambah Pengguna' : 'Edit Pengguna'}
-        subtitle={editing === 'new' ? 'Buat akun admin/petugas baru.' : `Ubah data ${editing.nama}.`}
+        subtitle={editing === 'new' ? 'Buat akun petugas / admin / super admin baru.' : `Ubah data ${editing.nama}.`}
         fields={fields}
-        initial={editing === 'new' ? { role: 'admin' } : editing}
+        initial={editing === 'new'
+          ? { role: 'admin', features: [...ROLE_DEFAULTS.admin] }
+          : { ...editing, features: resolveFeatures(editing.role, editing.features) }}
         onSave={async values => {
           if (editing === 'new') await onCreate(values)
           else await onUpdate(editing.id, values)
@@ -1587,7 +1658,7 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
   </>
 }
 
-function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete }) {
+function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete, canPrint = false, canEdit = true }) {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const items = visibleRequests
@@ -1604,19 +1675,32 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Arsip kunjungan yang sudah ditandai selesai, beserta permintaan yang ditolak.</p>
       </div>
-      <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
-        <UserPlus size={15} /> Tambah Riwayat
-      </button>
+      <div className="no-print flex flex-wrap items-center gap-2">
+        {canPrint && (
+          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+            <Printer size={15} /> Cetak Riwayat
+          </button>
+        )}
+        {canEdit && (
+          <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
+            <UserPlus size={15} /> Tambah Riwayat
+          </button>
+        )}
+      </div>
     </div>
-    <div className="mb-5">
+    <div className="print-only mb-4 border-b border-slate-300 pb-3">
+      <h1 className="text-xl font-bold text-slate-900">PeTa SKANIDA — Riwayat Kunjungan</h1>
+      <p className="mt-1 text-xs text-slate-600">Dicetak pada {new Date().toLocaleString('id-ID')} · {items.length} data</p>
+    </div>
+    <div className="no-print mb-5">
       <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Selesai', 'Ditolak']} />
     </div>
     <Panel title="Riwayat request" subtitle={`${items.length} data · ${completed} kunjungan selesai · ${items.length - completed} ditolak`}>
       <RequestTable
         items={items}
-        showCrud
-        onEdit={item => setEditing(item)}
-        onDelete={item => setDeleting(item)}
+        showCrud={canEdit}
+        onEdit={canEdit ? item => setEditing(item) : undefined}
+        onDelete={canEdit ? item => setDeleting(item) : undefined}
       />
     </Panel>
 
@@ -1657,8 +1741,219 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
   </>
 }
 
-function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
-  const [active, setActive] = useState('dashboard')
+// Petugas: daftar tamu yang akan datang (Pending / Diterima, tanggal >= hari ini).
+function UpcomingVisitsPage({ visibleRequests, query, onQueryChange, filter, onFilterChange }) {
+  const today = getTodayISO()
+  const items = visibleRequests
+    .filter(item => (item.status === 'Pending' || item.status === 'Diterima') && item.date >= today)
+    .slice()
+    .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
+  const pending = items.filter(item => item.status === 'Pending').length
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Kunjungan Mendatang</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Jadwal tamu yang akan datang. Data bersifat baca-saja untuk petugas.</p>
+    </div>
+    <div className="mb-5">
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Pending', 'Diterima']} />
+    </div>
+    <Panel title="Jadwal kunjungan" subtitle={`${items.length} tamu · ${pending} menunggu persetujuan`}>
+      <RequestTable items={items} showContact />
+    </Panel>
+  </>
+}
+
+// Super admin: tamu yang sedang berkunjung (status Diterima), baca-saja.
+function CurrentVisitsPage({ visibleRequests, query, onQueryChange, filter, onFilterChange }) {
+  const items = visibleRequests
+    .filter(item => item.status === 'Diterima')
+    .slice()
+    .sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`))
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Kunjungan Terkini</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Tamu yang sudah disetujui dan sedang / akan berkunjung.</p>
+    </div>
+    <div className="mb-5">
+      <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Diterima']} />
+    </div>
+    <Panel title="Kunjungan aktif" subtitle={`${items.length} tamu sedang berkunjung`}>
+      <RequestTable items={items} showContact />
+    </Panel>
+  </>
+}
+
+// Semua akun: detail akun yang sedang aktif.
+function AccountPage({ admin, features }) {
+  const rows = [
+    { label: 'Nama', value: admin?.nama || '-' },
+    { label: 'Email', value: admin?.email || '-' },
+    { label: 'Role', value: ROLE_LABELS[admin?.role] || admin?.role || '-' },
+    { label: 'Fitur aktif', value: `${features.length} fitur` },
+  ]
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Akun Saya</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Detail akun yang sedang aktif di perangkat ini.</p>
+    </div>
+    <div className="grid gap-5 lg:grid-cols-2">
+      <Panel title="Profil akun" subtitle="Data diambil dari sesi login aktif.">
+        <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+          {rows.map(row => (
+            <div key={row.label} className="flex items-center justify-between gap-4 px-6 py-4">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{row.label}</dt>
+              <dd className="text-sm font-semibold text-slate-700 dark:text-slate-200">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </Panel>
+      <Panel title="Fitur yang boleh diakses" subtitle="Diatur oleh super admin lewat menu Pengguna.">
+        <div className="flex flex-wrap gap-2 px-6 py-5">
+          {features.length ? features.map(key => (
+            <span key={key} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <BadgeCheck size={13} /> {featureLabel(key)}
+            </span>
+          )) : <p className="text-sm text-slate-400 dark:text-slate-500">Belum ada fitur yang diberikan.</p>}
+        </div>
+      </Panel>
+    </div>
+  </>
+}
+
+// Super admin: statistik database, unduh backup, bersihkan log scan lama.
+function DatabasePage({ onNotice }) {
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [days, setDays] = useState('30')
+  const [busy, setBusy] = useState(false)
+
+  async function loadStats() {
+    setLoading(true)
+    setError('')
+    try {
+      const { stats: result } = await api.databaseStats()
+      setStats(result)
+    } catch (err) {
+      setError(err.message || 'Gagal memuat statistik database.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadStats()
+  }, [])
+
+  async function handleBackup() {
+    setBusy(true)
+    try {
+      const { backup } = await api.databaseBackup()
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `peta-skanida-backup-${getTodayISO()}.json`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      onNotice?.('Backup database berhasil diunduh.')
+    } catch (err) {
+      setError(err.message || 'Gagal membuat backup.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleClean() {
+    const value = Number.parseInt(days, 10)
+    if (!Number.isInteger(value) || value < 0) {
+      setError('Umur log harus berupa angka 0 atau lebih.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const result = await api.cleanScanLogs(value)
+      onNotice?.(`${result.deleted || 0} log scan lama dihapus.`)
+      loadStats()
+    } catch (err) {
+      setError(err.message || 'Gagal membersihkan log scan.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <>
+    <div className="mb-6">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Kelola Database</h2>
+      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Pantau jumlah data, unduh backup, dan bersihkan log scan lama. Hanya untuk super admin.</p>
+    </div>
+
+    {error && (
+      <div className="mb-5 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+        <AlertCircle size={18} className="shrink-0" /> {error}
+      </div>
+    )}
+
+    <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {loading ? (
+        <div className="col-span-full flex items-center justify-center rounded-2xl border border-slate-100 bg-white py-12 text-slate-400 dark:border-slate-800 dark:bg-slate-900"><Loader2 className="animate-spin text-indigo-400" size={26} /></div>
+      ) : (stats?.tables || []).map(table => (
+        <div key={table.table} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{table.table}</p>
+            <Database size={16} className="text-indigo-400" />
+          </div>
+          <p className="mt-3 text-3xl font-bold text-slate-800 dark:text-slate-100">{table.count.toLocaleString('id-ID')}</p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{table.available ? 'baris data' : 'tabel belum dibuat'}</p>
+        </div>
+      ))}
+    </div>
+
+    {stats && (
+      <p className="mb-6 text-xs text-slate-400 dark:text-slate-500">
+        Total {stats.totalRecords.toLocaleString('id-ID')} baris pada tabel kunjungan · {stats.admins} akun pengguna · diperiksa {new Date(stats.checkedAt).toLocaleString('id-ID')}
+      </p>
+    )}
+
+    <div className="grid gap-5 lg:grid-cols-2">
+      <Panel title="Backup database" subtitle="Unduh seluruh data kunjungan dan profil pengguna sebagai JSON.">
+        <div className="px-6 py-5">
+          <button type="button" disabled={busy} onClick={handleBackup} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:opacity-60">
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Unduh Backup JSON
+          </button>
+          <p className="mt-3 text-xs leading-relaxed text-slate-400 dark:text-slate-500">Backup berisi tabel req_pending, req_acc, req_reject, riwayat, scan_logs, dan profil pengguna (tanpa password).</p>
+        </div>
+      </Panel>
+
+      <Panel title="Bersihkan log scan" subtitle="Hapus catatan scan yang lebih lama dari jumlah hari yang ditentukan.">
+        <div className="px-6 py-5">
+          <label htmlFor="clean-days" className="mb-1.5 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Lebih lama dari (hari)</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input id="clean-days" type="number" min="0" max="3650" value={days} onChange={e => setDays(e.target.value)} className={`${FIELD} max-w-[140px]`} />
+            <button type="button" disabled={busy} onClick={handleClean} className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-3 text-xs font-bold text-white transition hover:bg-rose-600 disabled:opacity-60">
+              {busy ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Bersihkan
+            </button>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-slate-400 dark:text-slate-500">Hanya log scan yang dihapus. Data tamu dan riwayat kunjungan tidak tersentuh.</p>
+        </div>
+      </Panel>
+    </div>
+  </>
+}
+
+function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
+  const adminName = admin?.nama || ''
+  const role = admin?.role || 'admin'
+  const features = resolveFeatures(role, admin?.features)
+  const featureKey = features.join('|')
+  const allowedNav = useMemo(
+    () => navItems.filter(item => features.includes(item.feature)),
+    [featureKey],
+  )
+  const [active, setActive] = useState(() => allowedNav[0]?.id || 'akun')
   const [requests, setRequests] = useState([])
   const [users, setUsers] = useState([])
   const [currentUserId, setCurrentUserId] = useState('')
@@ -1739,8 +2034,8 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
 
   useEffect(() => {
     fetchData()
-    fetchUsers()
-    api.me().then(({ admin }) => setCurrentUserId(admin?.userId || '')).catch(() => {})
+    if (features.includes('pengguna')) fetchUsers()
+    api.me().then(({ admin: sessionAdmin }) => setCurrentUserId(sessionAdmin?.userId || '')).catch(() => {})
 
     // Berlangganan perubahan real-time dari database.
     // Otomatis refresh ketika tamu mengirim request atau admin memproses.
@@ -1748,18 +2043,29 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
 
     // Notifikasi scan HP → laptop: realtime + polling 6 detik sebagai cadangan
     // (berguna bila realtime Supabase belum aktif / koneksi sempat putus).
-    fetchScans()
-    const unsubscribeScans = subscribeToScans(() => fetchScans())
-    const poll = window.setInterval(() => {
-      if (!document.hidden) fetchScans()
-    }, 6000)
+    let unsubscribeScans = () => {}
+    let poll = null
+    if (features.includes('scan')) {
+      fetchScans()
+      unsubscribeScans = subscribeToScans(() => fetchScans())
+      poll = window.setInterval(() => {
+        if (!document.hidden) fetchScans()
+      }, 6000)
+    }
 
     return () => {
       unsubscribe()
       unsubscribeScans()
-      window.clearInterval(poll)
+      if (poll) window.clearInterval(poll)
     }
   }, [])
+
+  // Bila fitur akun berubah / menu tidak lagi diizinkan, pindah ke menu pertama.
+  useEffect(() => {
+    if (!allowedNav.some(item => item.id === active)) {
+      setActive(allowedNav[0]?.id || 'akun')
+    }
+  }, [featureKey])
 
   const visibleRequests = useMemo(() => requests.filter(item => {
     const matchesQuery = `${item.name} ${item.id} ${item.purpose}`.toLowerCase().includes(query.toLowerCase())
@@ -1897,13 +2203,13 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
         <div className="px-4 pt-7">
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-slate-500">Menu utama</p>
           <nav className="space-y-1">
-            {navItems.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => goTo(id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${active === id ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-950/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Icon size={18} />{label}{active === id && <ChevronRight className="ml-auto" size={16} />}</button>)}
+            {allowedNav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => goTo(id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${active === id ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-950/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Icon size={18} />{label}{active === id && <ChevronRight className="ml-auto" size={16} />}</button>)}
           </nav>
         </div>
         <div className="mt-auto border-t border-white/10 p-4">
           <div className="mb-4 flex items-center gap-3 rounded-xl bg-white/5 p-3">
             <div className="grid h-9 w-9 place-items-center rounded-full bg-indigo-400/20 text-indigo-200"><UserRound size={18} /></div>
-            <div className="min-w-0"><p className="text-sm font-semibold">{adminName || 'Administrator'}</p><p className="text-xs text-slate-500">Pengelola sistem</p></div>
+            <div className="min-w-0"><p className="text-sm font-semibold">{adminName || 'Administrator'}</p><p className="text-xs text-slate-500">{ROLE_LABELS[role] || role}</p></div>
             <ShieldCheck className="ml-auto text-emerald-400" size={17} />
           </div>
           <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300"><LogOut size={18} />Keluar</button>
@@ -1918,7 +2224,7 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400 dark:text-slate-500">Admin</p></div>
+            <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400 dark:text-slate-500">{ROLE_LABELS[role] || role}</p></div>
             <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><UserRound size={19} /></div>
           </div>
         </header>
@@ -1938,12 +2244,16 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
             </div>
           ) : (
             <>
-              {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} />}
-              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} onCreate={createGuest} onUpdate={updateGuest} onDelete={removeGuest} />}
-              {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} sortOrder={sortOrder} onSortOrderChange={setSortOrder} />}
-              {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onCreate={createHistory} onUpdate={updateHistory} onDelete={removeHistory} />}
-              {active === 'scan' && <ScanPage scans={scans} onScanned={fetchScans} />}
-              {active === 'users' && <UsersPage users={users} currentUserId={currentUserId} onCreate={createUser} onUpdate={updateUser} onDelete={removeUser} />}
+              {active === 'dashboard' && features.includes('dashboard') && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} />}
+              {active === 'tamu' && features.includes('tamu') && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} onCreate={createGuest} onUpdate={updateGuest} onDelete={removeGuest} />}
+              {active === 'request' && features.includes('request') && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} sortOrder={sortOrder} onSortOrderChange={setSortOrder} />}
+              {active === 'riwayat' && features.includes('riwayat') && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onCreate={createHistory} onUpdate={updateHistory} onDelete={removeHistory} canPrint={features.includes('cetak_riwayat')} canEdit={role === 'admin'} />}
+              {active === 'kunjungan-terkini' && features.includes('kunjungan_terkini') && <CurrentVisitsPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
+              {active === 'kunjungan-mendatang' && features.includes('kunjungan_mendatang') && <UpcomingVisitsPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
+              {active === 'scan' && features.includes('scan') && <ScanPage scans={scans} onScanned={fetchScans} />}
+              {active === 'users' && features.includes('pengguna') && <UsersPage users={users} currentUserId={currentUserId} onCreate={createUser} onUpdate={updateUser} onDelete={removeUser} />}
+              {active === 'database' && features.includes('database') && <DatabasePage onNotice={showNotice} />}
+              {active === 'akun' && features.includes('akun') && <AccountPage admin={admin} features={features} />}
             </>
           )}
           <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
@@ -1999,7 +2309,7 @@ function LeaveWarningModal({ onDownload, onScreenshot, onClose }) {
 
 function App() {
   const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu', 'tamu-success'
-  const [adminName, setAdminName] = useState('')
+  const [admin, setAdmin] = useState(null)
   const [restoring, setRestoring] = useState(true)
   const [guestResult, setGuestResult] = useState(null)
   const [theme, setTheme] = useState(getInitialTheme)
@@ -2091,9 +2401,9 @@ function App() {
     let active = true
     api
       .me()
-      .then(({ admin }) => {
+      .then(({ admin: sessionAdmin }) => {
         if (!active) return
-        setAdminName(admin.nama)
+        setAdmin(sessionAdmin)
         setRole('admin')
       })
       .catch(() => {
@@ -2110,14 +2420,14 @@ function App() {
 
   function handleLoginSuccess(result) {
     saveSession(result)
-    setAdminName(result.admin.nama)
+    setAdmin(result.admin)
     setRole('admin')
   }
 
   function handleLogout() {
     api.logout() // cabut sesi di Supabase Auth (fire-and-forget)
     clearSession()
-    setAdminName('')
+    setAdmin(null)
     setRole(null)
   }
 
@@ -2153,7 +2463,7 @@ function App() {
       onClose={() => { setLeaveModalOpen(false); setPendingLeave(null) }}
     />}
   </>
-  return <AdminApp adminName={adminName} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+  return <AdminApp admin={admin} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
 }
 
 export default App

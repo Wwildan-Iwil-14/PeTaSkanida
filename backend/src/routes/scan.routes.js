@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { supabase } from '../lib/supabase.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { httpError } from '../lib/httpError.js'
-import { requireAdmin } from '../middleware/auth.js'
+import { requireAdmin, requireFeature } from '../middleware/auth.js'
 import { createRateLimiter } from '../middleware/rateLimit.js'
 
 const router = Router()
@@ -54,6 +54,7 @@ const HASIL_BY_STATUS = {
 router.post(
   '/',
   requireAdmin,
+  requireFeature('scan'),
   scanLimiter,
   asyncHandler(async (req, res) => {
     const kode = String(req.body?.kode || '').trim().slice(0, 64)
@@ -139,6 +140,7 @@ router.post(
 router.get(
   '/',
   requireAdmin,
+  requireFeature('scan'),
   asyncHandler(async (req, res) => {
     const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 20, 1), 100)
 

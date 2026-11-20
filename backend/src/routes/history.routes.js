@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { httpError } from '../lib/httpError.js'
 import { validateRequestPayload } from '../lib/validate.js'
-import { requireAdmin } from '../middleware/auth.js'
+import { requireAdmin, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -42,6 +42,7 @@ async function insertIfMissing(table, record) {
 router.post(
   '/',
   requireAdmin,
+  requireFeature('riwayat'),
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateRequestPayload(req.body)
     if (errors.length > 0) throw httpError(422, errors.join(' '))
@@ -62,6 +63,7 @@ router.post(
 router.patch(
   '/:id',
   requireAdmin,
+  requireFeature('riwayat'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
     const { payload, errors } = validateRequestPayload(req.body)
@@ -91,6 +93,7 @@ router.patch(
 router.delete(
   '/:id',
   requireAdmin,
+  requireFeature('riwayat'),
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id)
 

@@ -4,6 +4,7 @@ import requestRoutes from './request.routes.js'
 import userRoutes from './user.routes.js'
 import historyRoutes from './history.routes.js'
 import scanRoutes from './scan.routes.js'
+import databaseRoutes from './database.routes.js'
 
 const router = Router()
 
@@ -17,5 +18,6 @@ router.use('/requests', requestRoutes)
 router.use('/admin/users', userRoutes)
 router.use('/history', historyRoutes)
 router.use('/scans', scanRoutes)
+router.use('/admin/database', databaseRoutes)
 
 export default router

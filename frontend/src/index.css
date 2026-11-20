@@ -18,3 +18,19 @@ html.theme-transition *::before,
 html.theme-transition *::after {
   transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
 }
+
+/* Cetak riwayat kunjungan: sembunyikan navigasi & tombol aksi. */
+.print-only { display: none; }
+
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  html, body { background: #fff !important; color: #000 !important; }
+  aside, header, footer, .no-print { display: none !important; }
+  main { margin-left: 0 !important; }
+  .print-only { display: block !important; }
+  .max-w-\[1600px\] { max-width: none !important; }
+  table { width: 100% !important; min-width: 0 !important; font-size: 10px; }
+  th, td { padding: 6px 8px !important; }
+  tr { break-inside: avoid; }
+}
+

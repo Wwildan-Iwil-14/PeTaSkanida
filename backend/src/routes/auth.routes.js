@@ -3,6 +3,7 @@ import { supabase, supabaseAuth } from '../lib/supabase.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { httpError } from '../lib/httpError.js'
 import { getAdminProfile } from '../lib/admins.js'
+import { resolveFeatures } from '../lib/features.js'
 import { validateCredentials } from '../lib/validate.js'
 import { requireAdmin, readBearer } from '../middleware/auth.js'
 import { createRateLimiter } from '../middleware/rateLimit.js'
@@ -48,6 +49,7 @@ router.post(
         email: data.user.email,
         nama: profile.nama,
         role: profile.role,
+        features: resolveFeatures(profile.role, profile.features),
       },
     })
   }),

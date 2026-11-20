@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js'
 import { getAdminProfile } from '../lib/admins.js'
+import { resolveFeatures } from '../lib/features.js'
 import { httpError } from '../lib/httpError.js'
 
 /** Baca token dari header `Authorization: Bearer <token>`. */
@@ -15,6 +16,7 @@ const SESSAI_INVALID = 'Sesi admin tidak valid atau sudah berakhir. Silakan logi
  *
  * Token diverifikasi langsung ke Supabase Auth (GoTrue) lewat auth.getUser(),
  * lalu dipastikan akunnya punya baris profil di tabel public.admins.
+ * Hasilnya ditempel ke req.admin: userId, profileId, email, nama, role, features.
  */
 export async function requireAdmin(req, res, next) {
   try {
@@ -31,12 +33,40 @@ export async function requireAdmin(req, res, next) {
 
     req.admin = {
       userId: data.user.id,
+      profileId: profile.id,
       email: data.user.email,
       nama: profile.nama,
       role: profile.role,
+      features: resolveFeatures(profile.role, profile.features),
     }
     next()
   } catch (err) {
     next(err)
+  }
+}
+
+/**
+ * Wajib memiliki salah satu fitur yang diminta.
+ * Contoh: requireFeature('scan') atau requireFeature('request', 'tamu').
+ */
+export function requireFeature(...keys) {
+  return (req, res, next) => {
+    const owned = req.admin?.features || []
+    if (!keys.some(key => owned.includes(key))) {
+      return next(
+        httpError(403, 'Akun Anda tidak memiliki akses ke fitur ini. Hubungi super admin.'),
+      )
+    }
+    next()
+  }
+}
+
+/** Wajib memiliki salah satu role yang diminta. */
+export function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.admin?.role)) {
+      return next(httpError(403, 'Aksi ini hanya boleh dilakukan oleh super admin.'))
+    }
+    next()
   }
 }

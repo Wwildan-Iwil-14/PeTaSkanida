@@ -3,22 +3,24 @@
  * di tabel public.admins.
  *
  * Pemakaian (dari folder backend):
- *   npm run admin:create -- admin@skanida.sch.id admin123 "Administrator"
+ *   npm run admin:create -- admin@skanida.sch.id admin123 "Administrator" super_admin
  *
- * Prasyarat: migration database/migrations/20261112000000_*.sql sudah dijalankan
- * di Supabase SQL Editor (kolom admins.user_id harus sudah ada).
+ * Prasyarat: migration database/migrations/20261112000000_*.sql dan
+ * 20261120000002_add_features_role.sql sudah dijalankan di Supabase SQL Editor.
  */
 import { config } from '../src/config.js'
 import { supabase } from '../src/lib/supabase.js'
+import { ROLES } from '../src/lib/features.js'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function usage() {
-  console.log('Pemakaian: npm run admin:create -- <email> <password> [nama]')
-  console.log('Contoh:   npm run admin:create -- admin@skanida.sch.id admin123 "Administrator"')
+  console.log('Pemakaian: npm run admin:create -- <email> <password> [nama] [role]')
+  console.log('Role     : petugas | admin | super_admin (default: admin)')
+  console.log('Contoh:   npm run admin:create -- admin@skanida.sch.id admin123 "Administrator" super_admin')
 }
 
-const [, , email, password, nama = 'Administrator'] = process.argv
+const [, , email, password, nama = 'Administrator', roleArg = 'admin'] = process.argv
 
 if (!email || !password) {
   usage()
@@ -32,6 +34,11 @@ if (password.length < 6) {
   console.error('Password minimal 6 karakter (aturan bawaan Supabase Auth).')
   process.exit(1)
 }
+if (!ROLES.includes(roleArg)) {
+  console.error(`Role tidak dikenal: ${roleArg}. Pilih: ${ROLES.join(', ')}`)
+  process.exit(1)
+}
+const role = roleArg
 
 /** Cari user Supabase Auth berdasarkan email (listUsers tidak punya filter email). */
 async function findUserByEmail(target) {
@@ -116,7 +123,7 @@ async function main() {
   if (legacyRow) {
     const { error } = await supabase
       .from('admins')
-      .update({ user_id: user.id, nama, role: 'admin' })
+      .update({ user_id: user.id, nama, role })
       .eq('id', legacyRow.id)
     upsertError = error
   } else {
@@ -125,7 +132,7 @@ async function main() {
         user_id: user.id,
         email: user.email,
         nama,
-        role: 'admin',
+        role,
       },
       { onConflict: 'user_id' },
     )
@@ -147,6 +154,7 @@ async function main() {
   console.log('\n✅ Admin siap dipakai:')
   console.log(`   Email    : ${email}`)
   console.log(`   Nama     : ${nama}`)
+  console.log(`   Role     : ${role}`)
   console.log('   Login    : menu Admin / Pengelola di aplikasi frontend.')
 }
 

@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.riwayat (
     REFERENCES public.req_pending(id) ON DELETE CASCADE
 );
 
--- admins: Profil admin (nama, role) yang dihubungkan ke akun Supabase Auth.
+-- admins: Profil admin (nama, role, fitur) yang dihubungkan ke akun Supabase Auth.
 -- Login & password diurus Supabase Auth (auth.users), bukan tabel ini.
 -- Baris profil dibuat oleh skrip backend: npm run admin:create
 CREATE TABLE IF NOT EXISTS public.admins (
@@ -95,7 +95,10 @@ CREATE TABLE IF NOT EXISTS public.admins (
   username text UNIQUE,                -- arsip username lama (opsional)
   email text,
   nama text NOT NULL,
-  role text NOT NULL DEFAULT 'admin',
+  role text NOT NULL DEFAULT 'admin'
+    CHECK (role IN ('petugas', 'admin', 'super_admin')),
+  -- Daftar fitur per akun. NULL = pakai fitur bawaan role.
+  features text[],
   created_at timestamptz DEFAULT now()
 );
 

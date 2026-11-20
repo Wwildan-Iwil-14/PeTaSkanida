@@ -178,15 +178,15 @@ Cara mengisinya:
 >
 > **Penting:** simpan file sebagai **UTF-8 (tanpa BOM)**. Jika muncul karakter aneh di awal file, hapus. Jangan menambahkan tanda kutip (`"`) di sekitar nilai.
 
-### 5.4 Buat akun admin (Supabase Auth)
+### 5.4 Buat akun super admin (Supabase Auth)
 
-Jalankan perintah berikut untuk membuat akun admin di Supabase Auth sekaligus membuat profilnya di tabel database:
+Jalankan perintah berikut untuk membuat akun di Supabase Auth sekaligus membuat profilnya di tabel database:
 
 ```bash
-npm run admin:create -- admin@skanida.sch.id admin123 "Administrator"
+npm run admin:create -- admin@skanida.sch.id admin123 "Administrator" super_admin
 ```
 
-*(Kamu boleh mengganti `admin123` dengan password yang kamu inginkan.)*
+*(Kamu boleh mengganti `admin123` dengan password yang kamu inginkan. Role yang tersedia: `petugas`, `admin`, `super_admin`. Buat minimal satu `super_admin` agar menu Pengguna dan Database bisa diakses.)*
 
 ### 5.5 Jalankan server backend
 
@@ -392,7 +392,7 @@ Dijalankan dari folder utama `Peta-skanida`:
 | `npm run dev:frontend` | Jalankan frontend saja |
 | `npm run build` | Membuat versi produksi frontend (folder `frontend/dist`) |
 | `npm run db:sync` | Menyalin file migration database ke folder backend |
-| `npm run admin:create -- <email> <pwd> [nama]` | Buat atau perbarui akun admin di Supabase Auth & profil database |
+| `npm run admin:create -- <email> <pwd> [nama] [role]` | Buat atau perbarui akun di Supabase Auth & profil database (role: petugas / admin / super_admin) |
 
 > Setelah folder `node_modules` dihapus, jalankan `npm run install:all` terlebih dahulu sebelum `npm run dev`.
 
