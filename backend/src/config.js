@@ -27,7 +27,15 @@ export const config = {
   usingServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
   // Catatan: masa berlaku & tanda tangan token login diurus Supabase Auth (GoTrue),
   // sehingga AUTH_SECRET / TOKEN_TTL_SECONDS tidak lagi dipakai.
-  corsOrigins: toList(process.env.CORS_ORIGIN || 'http://localhost:5173'),
+  // Origin produksi Vercel selalu diizinkan walaupun CORS_ORIGIN di dashboard
+  // masih berisi nilai development, supaya /api bisa dipanggil dari frontend
+  // yang di-host di domain yang sama.
+  corsOrigins: [
+    ...new Set([
+      ...toList(process.env.CORS_ORIGIN || 'http://localhost:5173'),
+      'https://petaskanida.vercel.app',
+    ]),
+  ],
   nodeEnv: process.env.NODE_ENV || 'development',
 
   // Email tujuan dokumen surat tugas. Sementara memakai gmail pribadi;
