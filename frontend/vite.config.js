@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    base: '/Peta-Skanida/',
+    base: env.VITE_BASE_PATH || '/Peta-Skanida/',
     server: { proxy },
     preview: { proxy },
   }

@@ -3,9 +3,10 @@
   "buildCommand": "npm --prefix frontend run build",
   "outputDirectory": "frontend/dist",
   "env": {
-    "VITE_API_BASE_URL": "/api"
+    "VITE_API_BASE_URL": "/api",
+    "VITE_BASE_PATH": "/"
   },
-  "rewrites": [
-    { "source": "/Peta-Skanida/:path*", "destination": "/:path*" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/[...path].js" }
   ]
 }
