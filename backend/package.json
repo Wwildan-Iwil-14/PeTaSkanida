@@ -12,14 +12,14 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "db:sync": "node scripts/sync-migrations.js",
-    "admin:create": "node scripts/create-admin.js"
+    "admin:create": "node scripts/create-admin.js",
+    "storage:setup": "node scripts/storage-setup.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "googleapis": "^190.0.0",
     "multer": "^2.5.0"
   }
 }

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { httpError } from '../lib/httpError.js'
 import { validateRequestPayload } from '../lib/validate.js'
-import { uploadSuratTugas as sendToGoogleDrive } from '../lib/googleDrive.js'
+import { uploadSuratTugas as sendToStorage } from '../lib/storage.js'
 import { uploadSuratTugas as uploadSuratTugasMiddleware } from '../middleware/upload.js'
 import { requireAdmin } from '../middleware/auth.js'
 
@@ -57,16 +57,16 @@ router.post(
     if (errors.length > 0) throw httpError(422, errors.join(' '))
 
     // Surat tugas bersifat opsional — hanya diunggah bila ada file.
-    let driveFile = null
+    let uploadedFile = null
     if (req.file) {
-      driveFile = await sendToGoogleDrive({
+      uploadedFile = await sendToStorage({
         buffer: req.file.buffer,
         originalName: req.file.originalname,
         nama: payload.nama,
       })
-      payload.surat_tugas_url = driveFile.url
-      payload.surat_tugas_drive_id = driveFile.id
-      payload.surat_tugas_nama = driveFile.name
+      payload.surat_tugas_url = uploadedFile.url
+      payload.surat_tugas_drive_id = uploadedFile.id
+      payload.surat_tugas_nama = uploadedFile.name
     }
 
     let { data, error } = await supabase
@@ -101,19 +101,19 @@ router.post(
       request: data,
       // Email tujuan berasal dari konfigurasi SURAT_TUGAS_EMAIL (sementara
       // rubikesper@gmail.com, nanti diganti email sekolah lewat .env).
-      ...(driveFile
+      ...(uploadedFile
         ? {
             suratTugas: {
-              url: driveFile.url,
-              nama: driveFile.name,
-              tujuanEmail: driveFile.tujuanEmail,
+              url: uploadedFile.url,
+              nama: uploadedFile.name,
+              tujuanEmail: uploadedFile.tujuanEmail,
             },
           }
         : {}),
-      ...(driveFile && !data?.surat_tugas_url
+      ...(uploadedFile && !data?.surat_tugas_url
         ? {
             warning:
-              'Surat tugas berhasil diunggah ke Google Drive, tetapi database belum menyimpan tautannya. ' +
+              'Surat tugas berhasil diunggah ke penyimpanan, tetapi database belum menyimpan tautannya. ' +
               'Jalankan migration 20261120000000_add_surat_tugas_columns.sql di Supabase SQL Editor.',
           }
         : {}),

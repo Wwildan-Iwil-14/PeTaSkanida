@@ -1,5 +1,5 @@
--- Surat tugas tamu (opsional, PDF maks. 4 MB) diunggah ke Google Drive
--- folder "doc_kunjungan". Tautan & metadata disimpan supaya admin bisa
+-- Surat tugas tamu (opsional, PDF maks. 4 MB) diunggah ke bucket Supabase
+-- Storage "surat-tugas". Tautan & metadata disimpan supaya admin bisa
 -- membuka berkas dari tabel request.
 
 ALTER TABLE public.req_pending

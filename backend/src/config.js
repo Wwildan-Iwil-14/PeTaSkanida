@@ -30,23 +30,10 @@ export const config = {
   corsOrigins: toList(process.env.CORS_ORIGIN || 'http://localhost:5173'),
   nodeEnv: process.env.NODE_ENV || 'development',
 
-  // Google Drive (opsional) — dipakai untuk menyimpan surat tugas tamu.
-  // Upload tetap opsional: request tanpa file tetap bisa dikirim.
-  googleServiceAccountEmail: (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '').trim(),
-  // .env sering menulis private key dengan "\\n" literal → ubah ke newline.
-  googlePrivateKey: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-  googleDriveFolderId: (process.env.GOOGLE_DRIVE_FOLDER_ID || '').trim(),
-  googleDriveFolderName: (process.env.GOOGLE_DRIVE_FOLDER_NAME || 'doc_kunjungan').trim(),
-  googleDrivePublicLink: process.env.GOOGLE_DRIVE_PUBLIC_LINK !== 'false',
-
   // Email tujuan dokumen surat tugas. Sementara memakai gmail pribadi;
   // cukup ganti nilai ini di .env saat email sekolah sudah tersedia.
   suratTugasEmail: (process.env.SURAT_TUGAS_EMAIL || 'rubikesper@gmail.com').trim(),
 }
-
-export const isGoogleDriveConfigured = Boolean(
-  config.googleServiceAccountEmail && config.googlePrivateKey,
-)
 
 export function validateConfig() {
   const missing = []

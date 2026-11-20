@@ -11,6 +11,7 @@
     "dev:backend": "npm --prefix backend run dev",
     "build": "npm --prefix frontend run build",
     "db:sync": "npm --prefix backend run db:sync",
-    "admin:create": "npm --prefix backend run admin:create --"
+    "admin:create": "npm --prefix backend run admin:create --",
+    "storage:setup": "npm --prefix backend run storage:setup"
   }
 }

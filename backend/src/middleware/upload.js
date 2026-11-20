@@ -3,7 +3,7 @@ import { httpError } from '../lib/httpError.js'
 
 export const MAX_SURAT_TUGAS_SIZE = 4 * 1024 * 1024 // 4 MB
 
-// memoryStorage: file langsung diteruskan ke Google Drive dari buffer,
+// memoryStorage: file langsung diteruskan ke Supabase Storage dari buffer,
 // tidak bergantung pada filesystem (aman untuk Vercel).
 const upload = multer({
   storage: multer.memoryStorage(),

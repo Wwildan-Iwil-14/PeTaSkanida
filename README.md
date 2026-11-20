@@ -430,27 +430,23 @@ Menu **Pengguna** dipakai untuk menambah, mengedit, dan menghapus akun admin/pet
 
 ### Upload Surat Tugas (opsional)
 
-Form tamu punya kolom **Surat Tugas** yang **tidak wajib diisi**. Jika diisi, file PDF (maks. 4 MB) diunggah ke folder **`doc_kunjungan`** di Google Drive akun **rubikesper@gmail.com**, dan tautannya bisa dibuka admin dari tabel request.
+Form tamu punya kolom **Surat Tugas** yang **tidak wajib diisi**. Jika diisi, file PDF (maks. 4 MB) diunggah ke bucket Supabase Storage **`surat-tugas`**, dan tautannya bisa dibuka admin dari tabel request untuk dicetak.
 
-Karena Drive itu akun personal, upload memakai **service account**:
+Kenapa Supabase Storage (bukan Google Drive): service account Google tidak punya kuota Drive pribadi, sedangkan OAuth Google untuk akun personal sekarang mewajibkan privacy policy URL publik untuk bisa di-publish. Supabase sudah dipakai proyek ini, jadi tidak ada kredensial tambahan.
 
-1. Di Google Cloud Console, aktifkan **Google Drive API** dan buat **service account**.
-2. Di Drive `rubikesper@gmail.com`, buat folder `doc_kunjungan` lalu **Share** ke email service account sebagai **Editor**.
-3. Isi `backend/.env` (contoh ada di `backend/.env.example`):
+**Setup (sekali):**
 
-   ```env
-   GOOGLE_SERVICE_ACCOUNT_EMAIL=xxx@xxx.iam.gserviceaccount.com
-   GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-   GOOGLE_DRIVE_FOLDER_NAME=doc_kunjungan
-   # Email tujuan dokumen (sementara). Nanti ganti ke email sekolah di sini:
-   SURAT_TUGAS_EMAIL=rubikesper@gmail.com
-   ```
+```bash
+npm run storage:setup
+```
 
-   `SURAT_TUGAS_EMAIL` adalah alamat tujuan yang dicatat pada berkas dan ditampilkan ke tamu. Nilainya **sementara** `rubikesper@gmail.com`; cukup ubah di `.env` lalu restart backend saat email sekolah sudah tersedia — tidak perlu mengubah kode.
+Perintah ini membuat bucket `surat-tugas` yang public, hanya menerima PDF, dengan batas 4 MB. Aman dijalankan berulang kali.
 
-4. Jalankan migration `database/migrations/20261120000000_add_surat_tugas_columns.sql` di Supabase SQL Editor, lalu restart backend.
+**Migration database:** jalankan `database/migrations/20261120000000_add_surat_tugas_columns.sql` di Supabase SQL Editor supaya tautan tersimpan di tabel request, lalu restart backend.
 
-Sebelum kredensial diisi, form tetap bisa dipakai **tanpa** file. Jika ada file tanpa kredensial, muncul pesan "Upload surat tugas belum tersedia". Jika migration belum dijalankan, request tetap terkirim dan tautan tetap ditampilkan ke tamu, tetapi belum tersimpan di database.
+`SURAT_TUGAS_EMAIL` di `.env` adalah alamat tujuan yang dicatat pada berkas dan ditampilkan ke tamu. Nilainya **sementara** `rubikesper@gmail.com`; cukup ubah di `.env` lalu restart backend saat email sekolah sudah tersedia — tidak perlu mengubah kode.
+
+Form tetap bisa dipakai **tanpa** file. Jika migration belum dijalankan, request tetap terkirim dan tautan tetap ditampilkan ke tamu, tetapi belum tersimpan di database.
 
 ---
 
