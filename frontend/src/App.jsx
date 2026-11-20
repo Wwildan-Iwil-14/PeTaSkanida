@@ -9,7 +9,8 @@ import {
   CalendarCheck, Eye, EyeOff, MessageCircle,
   Loader2, AlertCircle, Moon, Sun, Copy, Check,
   CircleDashed, BadgeCheck, ArrowRight, ArrowLeft, Info, Mail,
-  Phone, Send, Plus, ChevronDown, Download, AlertTriangle, Camera
+  Phone, Send, Plus, ChevronDown, Download, AlertTriangle, Camera,
+  Pencil, Trash2, UserPlus
 } from 'lucide-react'
 
 const THEME_KEY = 'peta-skanida.theme'
@@ -53,6 +54,7 @@ const navItems = [
   { id: 'request', label: 'Daftar Request', icon: ClipboardList },
   { id: 'tamu', label: 'Kelola Tamu', icon: Users },
   { id: 'riwayat', label: 'Riwayat Kunjungan', icon: History },
+  { id: 'users', label: 'Pengguna', icon: ShieldCheck },
 ]
 
 const formatDate = (value) => {
@@ -826,11 +828,266 @@ function Panel({ title, subtitle, action, children }) {
   )
 }
 
-function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus, onToggleContacted, onComplete }) {
+// ---- Form & konfirmasi untuk fitur CRUD admin ----
+
+const RECORD_FIELDS = [
+  { key: 'nama', label: 'Nama / Instansi', type: 'text', required: true },
+  { key: 'email', label: 'Email', type: 'email', required: true },
+  { key: 'no_hp', label: 'Nomor Handphone', type: 'tel', required: true },
+  { key: 'tujuan', label: 'Tujuan', type: 'text', required: true },
+  { key: 'keperluan', label: 'Keperluan', type: 'text', required: true },
+  { key: 'tanggal', label: 'Tanggal Kunjungan', type: 'date', required: true },
+  { key: 'waktu', label: 'Waktu Kunjungan', type: 'time' },
+  { key: 'jumlah', label: 'Jumlah Pengunjung', type: 'number', required: true, min: 1 },
+]
+
+const GUEST_CREATE_FIELDS = [
+  ...RECORD_FIELDS,
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'Diterima', label: 'Diterima' },
+      { value: 'Ditolak', label: 'Ditolak' },
+      { value: 'Selesai', label: 'Selesai (langsung masuk riwayat)' },
+      { value: 'Pending', label: 'Pending' },
+    ],
+  },
+]
+
+const USER_FIELDS = [
+  { key: 'nama', label: 'Nama Petugas', type: 'text', required: true },
+  { key: 'email', label: 'Email', type: 'email', required: true },
+  { key: 'password', label: 'Password', type: 'password', autoComplete: 'new-password' },
+  {
+    key: 'role',
+    label: 'Role',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'admin', label: 'Admin' },
+      { value: 'petugas', label: 'Petugas' },
+    ],
+  },
+]
+
+function FormModal({ title, subtitle, fields, initial = {}, onSave, onClose }) {
+  const [values, setValues] = useState(() => {
+    const base = { ...initial }
+    for (const field of fields) {
+      if (base[field.key] === undefined || base[field.key] === null) {
+        base[field.key] = field.type === 'number' ? 1 : ''
+      }
+    }
+    return base
+  })
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    try {
+      await onSave(values)
+    } catch (err) {
+      setError(err.message || 'Gagal menyimpan data.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+            {subtitle && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>}
+          </div>
+          <button type="button" onClick={onClose} aria-label="Tutup" className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"><X size={18} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-5 grid gap-3.5 sm:grid-cols-2">
+          {fields.map(field => (
+            <div key={field.key} className={field.key === 'keperluan' ? 'sm:col-span-2' : ''}>
+              <label htmlFor={`form-${field.key}`} className="mb-1.5 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                {field.label} {field.required && <span className="text-indigo-500">*</span>}
+              </label>
+              {field.type === 'select' ? (
+                <select
+                  id={`form-${field.key}`}
+                  value={values[field.key] ?? ''}
+                  onChange={e => setValues(current => ({ ...current, [field.key]: e.target.value }))}
+                  required={field.required}
+                  className={FIELD}
+                >
+                  {(field.options || []).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              ) : (
+                <input
+                  id={`form-${field.key}`}
+                  type={field.type}
+                  value={values[field.key] ?? ''}
+                  onChange={e => setValues(current => ({ ...current, [field.key]: e.target.value }))}
+                  placeholder={field.placeholder}
+                  min={field.min}
+                  required={field.required}
+                  autoComplete={field.autoComplete}
+                  className={FIELD}
+                />
+              )}
+              {field.hint && <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">{field.hint}</p>}
+            </div>
+          ))}
+
+          {error && <p className="sm:col-span-2 rounded-xl bg-rose-50 px-3 py-2 text-[12px] font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
+
+          <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
+            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Batal</button>
+            <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-600 disabled:opacity-60">
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ConfirmModal({ title, message, onConfirm, onClose }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleConfirm() {
+    setBusy(true)
+    setError('')
+    try {
+      await onConfirm()
+    } catch (err) {
+      setError(err.message || 'Gagal menghapus data.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300"><Trash2 size={19} /></div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{message}</p>
+          </div>
+        </div>
+        {error && <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[12px] font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Batal</button>
+          <button type="button" onClick={handleConfirm} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-rose-600 disabled:opacity-60">
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {busy ? 'Menghapus...' : 'Hapus'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId }) {
+  const [editing, setEditing] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+
+  const fields = editing === 'new'
+    ? USER_FIELDS.map(field => field.key === 'password'
+        ? { ...field, required: true, hint: 'Minimal 6 karakter.' }
+        : field)
+    : USER_FIELDS.map(field => field.key === 'password'
+        ? { ...field, hint: 'Kosongkan untuk tetap memakai password lama.' }
+        : field)
+
+  return <>
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pengguna</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Kelola akun admin dan petugas yang bisa mengakses aplikasi.</p>
+      </div>
+      <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
+        <UserPlus size={15} /> Tambah Pengguna
+      </button>
+    </div>
+
+    <Panel title="Daftar pengguna" subtitle={`${users.length} akun terdaftar`}>
+      {users.length ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60">
+              <tr>
+                <th className="px-6 py-4 font-semibold">Nama</th>
+                <th className="px-6 py-4 font-semibold">Email</th>
+                <th className="px-6 py-4 font-semibold">Role</th>
+                <th className="px-6 py-4 font-semibold">Dibuat</th>
+                <th className="px-6 py-4 text-right font-semibold">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {users.map(user => (
+                <tr key={user.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                  <td className="px-6 py-4">
+                    <div className="font-semibold text-slate-800 dark:text-slate-200">{user.nama || '-'}</div>
+                    {user.user_id === currentUserId && <span className="mt-1 inline-block text-[10px] font-semibold text-indigo-500">Akun Anda</span>}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.email || '-'}</td>
+                  <td className="px-6 py-4"><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600 dark:bg-slate-800 dark:text-slate-300">{user.role || 'admin'}</span></td>
+                  <td className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">{user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setEditing(user)} title="Edit pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"><Pencil size={13} /> Edit</button>
+                      <button type="button" onClick={() => setDeleting(user)} title="Hapus pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"><Trash2 size={13} /> Hapus</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada pengguna.</div>}
+    </Panel>
+
+    {editing && (
+      <FormModal
+        title={editing === 'new' ? 'Tambah Pengguna' : 'Edit Pengguna'}
+        subtitle={editing === 'new' ? 'Buat akun admin/petugas baru.' : `Ubah data ${editing.nama}.`}
+        fields={fields}
+        initial={editing === 'new' ? { role: 'admin' } : editing}
+        onSave={async values => {
+          if (editing === 'new') await onCreate(values)
+          else await onUpdate(editing.id, values)
+          setEditing(null)
+        }}
+        onClose={() => setEditing(null)}
+      />
+    )}
+
+    {deleting && (
+      <ConfirmModal
+        title="Hapus pengguna?"
+        message={`Akun ${deleting.nama} akan dihapus dan tidak bisa lagi login ke aplikasi.`}
+        onConfirm={async () => { await onDelete(deleting.id); setDeleting(null) }}
+        onClose={() => setDeleting(null)}
+      />
+    )}
+  </>
+}
+
+function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus, onToggleContacted, onComplete, showCrud = false, onEdit, onDelete }) {
   if (!items.length) {
     return <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data yang cocok.</div>
   }
-  const hasActions = showActions || Boolean(onComplete)
+  const hasActions = showActions || Boolean(onComplete) || showCrud
   const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
   return (
     <div className="overflow-x-auto">
@@ -863,22 +1120,37 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
               <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.people} orang</td>
               <td className="px-6 py-4"><Status value={item.status} /></td>
               {hasActions && <td className="px-6 py-4">
-                {item.status === 'Pending' && showActions ? (
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => onUpdateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">Terima</button>
-                    <button onClick={() => onUpdateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20">Tolak</button>
-                  </div>
-                ) : item.status === 'Diterima' && onComplete ? (
-                  <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {item.status === 'Pending' && showActions && (
+                    <>
+                      <button type="button" onClick={() => onUpdateStatus(item.id, 'Diterima')} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">Terima</button>
+                      <button type="button" onClick={() => onUpdateStatus(item.id, 'Ditolak')} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20">Tolak</button>
+                    </>
+                  )}
+                  {item.status === 'Diterima' && onComplete && (
                     <button
+                      type="button"
                       onClick={() => onComplete(item.id)}
                       title="Tandai kunjungan selesai dan pindahkan ke Riwayat Kunjungan"
                       className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
                     >
                       <CheckCircle2 size={14} /> Selesai
                     </button>
-                  </div>
-                ) : <div className="text-right text-xs text-slate-400 dark:text-slate-500">{item.status === 'Selesai' ? 'Di riwayat' : 'Sudah diproses'}</div>}
+                  )}
+                  {showCrud && (
+                    <>
+                      {onEdit && (
+                        <button type="button" onClick={() => onEdit(item)} title="Edit data" className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"><Pencil size={13} /> Edit</button>
+                      )}
+                      {onDelete && (
+                        <button type="button" onClick={() => onDelete(item)} title="Hapus data" className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"><Trash2 size={13} /> Hapus</button>
+                      )}
+                    </>
+                  )}
+                  {!showActions && !onComplete && !showCrud && (
+                    <span className="text-xs text-slate-400 dark:text-slate-500">{item.status === 'Selesai' ? 'Di riwayat' : 'Sudah diproses'}</span>
+                  )}
+                </div>
               </td>}
               {showContact && <td className="px-6 py-4">
                 <div className="flex flex-col items-start gap-2">
@@ -1008,9 +1280,11 @@ function Dashboard({ requests, adminName, onGoTo }) {
   </>
 }
 
-function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange }) {
+function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange, onCreate, onUpdate, onDelete }) {
   const isPending = type === 'request'
   const [tamuView, setTamuView] = useState('semua')
+  const [editing, setEditing] = useState(null)
+  const [deleting, setDeleting] = useState(null)
 
   // Kelola Tamu hanya menampilkan tamu yang belum selesai.
   // Tamu berstatus "Selesai" sudah pindah ke Riwayat Kunjungan.
@@ -1038,9 +1312,16 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
   }
 
   return <>
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak. Gunakan tab Kunjungan Terkini dan klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan.'}</p>
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{isPending ? 'Daftar Request' : 'Kelola Tamu'}</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak. Klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan.'}</p>
+      </div>
+      {!isPending && (
+        <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
+          <UserPlus size={15} /> Tambah Tamu
+        </button>
+      )}
     </div>
 
     {!isPending && (
@@ -1100,13 +1381,53 @@ function ListingPage({ type, visibleRequests, query, onQueryChange, filter, onFi
         showContact={!isPending && view === 'semua'}
         onUpdateStatus={onUpdateStatus}
         onToggleContacted={onToggleContacted}
-        onComplete={!isPending && view === 'terkini' ? onComplete : undefined}
+        onComplete={!isPending ? onComplete : undefined}
+        showCrud={!isPending}
+        onEdit={item => setEditing(item)}
+        onDelete={item => setDeleting(item)}
       />
     </Panel>
+
+    {editing && (
+      <FormModal
+        title={editing === 'new' ? 'Tambah Tamu' : 'Edit Tamu'}
+        subtitle={editing === 'new' ? 'Tambahkan tamu baru ke dalam sistem.' : `Ubah data ${editing.name}.`}
+        fields={editing === 'new' ? GUEST_CREATE_FIELDS : RECORD_FIELDS}
+        initial={editing === 'new'
+          ? { tanggal: new Date().toISOString().split('T')[0], jumlah: 1, status: 'Diterima' }
+          : {
+              nama: editing.name,
+              email: editing.email,
+              no_hp: editing.phone,
+              tujuan: editing.tujuan,
+              keperluan: editing.keperluan,
+              tanggal: editing.date,
+              waktu: editing.time,
+              jumlah: editing.people,
+            }}
+        onSave={async values => {
+          if (editing === 'new') await onCreate(values)
+          else await onUpdate(editing.dbId, values)
+          setEditing(null)
+        }}
+        onClose={() => setEditing(null)}
+      />
+    )}
+
+    {deleting && (
+      <ConfirmModal
+        title="Hapus tamu?"
+        message={`Data ${deleting.name} (${deleting.id}) akan dihapus beserta catatan kunjungannya.`}
+        onConfirm={async () => { await onDelete(deleting.dbId); setDeleting(null) }}
+        onClose={() => setDeleting(null)}
+      />
+    )}
   </>
 }
 
-function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange }) {
+function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete }) {
+  const [editing, setEditing] = useState(null)
+  const [deleting, setDeleting] = useState(null)
   const items = visibleRequests
     .filter(item => item.status === 'Selesai' || item.status === 'Ditolak')
     .slice()
@@ -1116,20 +1437,69 @@ function HistoryPage({ visibleRequests, query, onQueryChange, filter, onFilterCh
     })
   const completed = items.filter(item => item.status === 'Selesai').length
   return <>
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Arsip kunjungan yang sudah ditandai selesai, beserta permintaan yang ditolak.</p>
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Riwayat Kunjungan</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Arsip kunjungan yang sudah ditandai selesai, beserta permintaan yang ditolak.</p>
+      </div>
+      <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
+        <UserPlus size={15} /> Tambah Riwayat
+      </button>
     </div>
     <div className="mb-5">
       <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Selesai', 'Ditolak']} />
     </div>
-    <Panel title="Riwayat request" subtitle={`${items.length} data · ${completed} kunjungan selesai · ${items.length - completed} ditolak`}><RequestTable items={items} /></Panel>
+    <Panel title="Riwayat request" subtitle={`${items.length} data · ${completed} kunjungan selesai · ${items.length - completed} ditolak`}>
+      <RequestTable
+        items={items}
+        showCrud
+        onEdit={item => setEditing(item)}
+        onDelete={item => setDeleting(item)}
+      />
+    </Panel>
+
+    {editing && (
+      <FormModal
+        title={editing === 'new' ? 'Tambah Riwayat' : 'Edit Riwayat'}
+        subtitle={editing === 'new' ? 'Tambahkan arsip kunjungan baru.' : `Ubah data ${editing.name}.`}
+        fields={RECORD_FIELDS}
+        initial={editing === 'new'
+          ? { tanggal: new Date().toISOString().split('T')[0], jumlah: 1 }
+          : {
+              nama: editing.name,
+              email: editing.email,
+              no_hp: editing.phone,
+              tujuan: editing.tujuan,
+              keperluan: editing.keperluan,
+              tanggal: editing.date,
+              waktu: editing.time,
+              jumlah: editing.people,
+            }}
+        onSave={async values => {
+          if (editing === 'new') await onCreate(values)
+          else await onUpdate(editing.dbId, values)
+          setEditing(null)
+        }}
+        onClose={() => setEditing(null)}
+      />
+    )}
+
+    {deleting && (
+      <ConfirmModal
+        title="Hapus riwayat?"
+        message={`Riwayat ${deleting.name} (${deleting.id}) akan dihapus permanen.`}
+        onConfirm={async () => { await onDelete(deleting.dbId); setDeleting(null) }}
+        onClose={() => setDeleting(null)}
+      />
+    )}
   </>
 }
 
 function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
   const [active, setActive] = useState('dashboard')
   const [requests, setRequests] = useState([])
+  const [users, setUsers] = useState([])
+  const [currentUserId, setCurrentUserId] = useState('')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Semua')
   const [sortOrder, setSortOrder] = useState('Terkini')
@@ -1138,6 +1508,11 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  function showNotice(message, duration = 3200) {
+    setNotice(message)
+    window.setTimeout(() => setNotice(''), duration)
+  }
 
   // Ambil semua data request dari backend
   async function fetchData() {
@@ -1153,8 +1528,19 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
     }
   }
 
+  async function fetchUsers() {
+    try {
+      const { users: rows } = await api.listAdminUsers()
+      setUsers(rows || [])
+    } catch (err) {
+      console.error('[frontend] Gagal memuat daftar pengguna:', err)
+    }
+  }
+
   useEffect(() => {
     fetchData()
+    fetchUsers()
+    api.me().then(({ admin }) => setCurrentUserId(admin?.userId || '')).catch(() => {})
 
     // Berlangganan perubahan real-time dari database.
     // Otomatis refresh ketika tamu mengirim request atau admin memproses.
@@ -1232,6 +1618,57 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
     }
   }
 
+  // ---- CRUD pengguna ----
+  async function createUser(values) {
+    await api.createAdminUser(values)
+    await fetchUsers()
+    showNotice('Pengguna baru berhasil ditambahkan.')
+  }
+  async function updateUser(id, values) {
+    await api.updateAdminUser(id, values)
+    await fetchUsers()
+    showNotice('Data pengguna berhasil diperbarui.')
+  }
+  async function removeUser(id) {
+    await api.deleteAdminUser(id)
+    await fetchUsers()
+    showNotice('Pengguna berhasil dihapus.')
+  }
+
+  // ---- CRUD tamu ----
+  async function createGuest(values) {
+    await api.createGuest(values)
+    await fetchData()
+    showNotice('Tamu baru berhasil ditambahkan.')
+  }
+  async function updateGuest(id, values) {
+    await api.updateRequest(id, values)
+    await fetchData()
+    showNotice('Data tamu berhasil diperbarui.')
+  }
+  async function removeGuest(id) {
+    await api.deleteRequest(id)
+    await fetchData()
+    showNotice('Tamu berhasil dihapus.')
+  }
+
+  // ---- CRUD riwayat ----
+  async function createHistory(values) {
+    await api.createHistory(values)
+    await fetchData()
+    showNotice('Riwayat baru berhasil ditambahkan.')
+  }
+  async function updateHistory(id, values) {
+    await api.updateHistory(id, values)
+    await fetchData()
+    showNotice('Riwayat berhasil diperbarui.')
+  }
+  async function removeHistory(id) {
+    await api.deleteHistory(id)
+    await fetchData()
+    showNotice('Riwayat berhasil dihapus.')
+  }
+
   const pageTitle = navItems.find(item => item.id === active)?.label || 'Dashboard'
 
   return (
@@ -1290,9 +1727,10 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
           ) : (
             <>
               {active === 'dashboard' && <Dashboard requests={requests} adminName={adminName} onGoTo={goTo} />}
-              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} />}
+              {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} onCreate={createGuest} onUpdate={updateGuest} onDelete={removeGuest} />}
               {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} sortOrder={sortOrder} onSortOrderChange={setSortOrder} />}
-              {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />}
+              {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onCreate={createHistory} onUpdate={updateHistory} onDelete={removeHistory} />}
+              {active === 'users' && <UsersPage users={users} currentUserId={currentUserId} onCreate={createUser} onUpdate={updateUser} onDelete={removeUser} />}
             </>
           )}
           <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>

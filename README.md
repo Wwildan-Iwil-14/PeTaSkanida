@@ -409,9 +409,24 @@ Dijalankan dari folder utama `Peta-skanida`:
 | GET | `/api/requests` | Ya | Ambil seluruh data request |
 | POST | `/api/requests/:id/approve` | Ya | Setujui permohonan |
 | POST | `/api/requests/:id/reject` | Ya | Tolak permohonan |
+| POST | `/api/requests/:id/complete` | Ya | Tandai selesai → pindah ke Riwayat Kunjungan |
 | PATCH | `/api/requests/:id/contacted` | Ya | Tandai tamu sudah/belum dihubungi (`{ "dihubungi": true }`) |
+| POST | `/api/requests/admin` | Ya | Tambah tamu oleh admin (bisa langsung berstatus Diterima/Ditolak/Selesai) |
+| PATCH | `/api/requests/:id` | Ya | Edit data tamu |
+| DELETE | `/api/requests/:id` | Ya | Hapus tamu beserta data terkait |
+| POST | `/api/history` | Ya | Tambah entri riwayat |
+| PATCH | `/api/history/:id` | Ya | Edit entri riwayat |
+| DELETE | `/api/history/:id` | Ya | Hapus entri riwayat |
+| GET | `/api/admin/users` | Ya | Daftar akun admin/petugas |
+| POST | `/api/admin/users` | Ya | Tambah admin/petugas |
+| PATCH | `/api/admin/users/:id` | Ya | Edit admin/petugas (nama, email, password, role) |
+| DELETE | `/api/admin/users/:id` | Ya | Hapus admin/petugas (tidak bisa menghapus diri sendiri) |
 
 Endpoint yang perlu login memakai header: `Authorization: Bearer <token>`.
+
+### Fitur kelola admin
+
+Menu **Pengguna** dipakai untuk menambah, mengedit, dan menghapus akun admin/petugas. Menu **Kelola Tamu** menyediakan tambah, edit, hapus, dan tombol **Selesai** untuk memindahkan tamu ke **Riwayat Kunjungan**. Menu **Riwayat Kunjungan** juga menyediakan tambah, edit, dan hapus arsip kunjungan.
 
 ---
 

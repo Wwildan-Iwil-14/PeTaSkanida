@@ -15,6 +15,13 @@ const parseId = value => {
   return id
 }
 
+async function insertIfMissing(table, record) {
+  const { error } = await supabase.from(table).insert(record)
+  if (error && error.code !== DUPLICATE_KEY) {
+    throw httpError(502, `Gagal menyimpan ke ${table}: ${error.message}`)
+  }
+}
+
 const toRecord = row => ({
   id: row.id,
   nama: row.nama,
@@ -46,6 +53,45 @@ router.post(
     if (error) throw httpError(502, `Gagal menyimpan permintaan: ${error.message}`)
 
     res.status(201).json({ request: data })
+  }),
+)
+
+/**
+ * POST /api/requests/admin
+ * Admin menambah tamu langsung dengan status tertentu (default Diterima),
+ * sehingga langsung muncul di Kelola Tamu / Riwayat Kunjungan.
+ */
+router.post(
+  '/admin',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { payload, errors } = validateRequestPayload(req.body)
+    if (errors.length > 0) throw httpError(422, errors.join(' '))
+
+    const status = ['Pending', 'Diterima', 'Ditolak', 'Selesai'].includes(req.body?.status)
+      ? req.body.status
+      : 'Diterima'
+
+    const { data: created, error } = await supabase
+      .from('req_pending')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (error) throw httpError(502, `Gagal menyimpan tamu: ${error.message}`)
+
+    const record = toRecord(created)
+    if (status === 'Diterima') {
+      const { error: accError } = await supabase.from('req_acc').insert(record)
+      if (accError) throw httpError(502, `Gagal menyimpan kunjungan: ${accError.message}`)
+    } else if (status === 'Ditolak') {
+      await insertIfMissing('req_reject', record)
+      await insertIfMissing('riwayat', record)
+    } else if (status === 'Selesai') {
+      await insertIfMissing('riwayat', record)
+    }
+
+    res.status(201).json({ request: { ...record, status } })
   }),
 )
 
@@ -208,6 +254,62 @@ router.patch(
         dihubungi_at: data.dihubungi_at || null,
       },
     })
+  }),
+)
+
+/**
+ * PATCH /api/requests/:id — edit data tamu.
+ * Perubahan disamakan ke tabel req_pending dan tabel bayangannya.
+ */
+router.patch(
+  '/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id)
+    const { payload, errors } = validateRequestPayload(req.body)
+    if (errors.length > 0) throw httpError(422, errors.join(' '))
+
+    const { data: current, error: findError } = await supabase
+      .from('req_pending')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (findError) throw httpError(502, `Gagal memuat request: ${findError.message}`)
+    if (!current) throw httpError(404, 'Request tidak ditemukan.')
+
+    for (const table of ['req_pending', 'req_acc', 'req_reject', 'riwayat']) {
+      const { error } = await supabase.from(table).update(payload).eq('id', id)
+      if (error) throw httpError(502, `Gagal memperbarui ${table}: ${error.message}`)
+    }
+
+    res.json({ request: { id, ...payload } })
+  }),
+)
+
+/**
+ * DELETE /api/requests/:id — hapus tamu beserta data terkait.
+ * Baris req_acc / req_reject / riwayat ikut terhapus lewat ON DELETE CASCADE.
+ */
+router.delete(
+  '/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id)
+
+    const { data: current, error: findError } = await supabase
+      .from('req_pending')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (findError) throw httpError(502, `Gagal memuat request: ${findError.message}`)
+    if (!current) throw httpError(404, 'Request tidak ditemukan.')
+
+    const { error } = await supabase.from('req_pending').delete().eq('id', id)
+    if (error) throw httpError(502, `Gagal menghapus request: ${error.message}`)
+
+    res.json({ ok: true })
   }),
 )
 

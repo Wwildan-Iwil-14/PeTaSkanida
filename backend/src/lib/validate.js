@@ -40,6 +40,33 @@ export function validateRequestPayload(body = {}) {
 }
 
 /**
+ * Validasi payload akun admin/petugas (dipakai fitur tambah & edit user).
+ */
+export function validateAdminPayload(body = {}, { isCreate = false } = {}) {
+  const errors = []
+  const payload = {
+    nama: text(body.nama),
+    email: text(body.email),
+    role: text(body.role) || 'admin',
+    password: typeof body.password === 'string' ? body.password : '',
+  }
+
+  if (!payload.nama) errors.push('Nama petugas wajib diisi.')
+  if (!EMAIL_PATTERN.test(payload.email)) errors.push('Format alamat email tidak valid.')
+  if (!['admin', 'petugas'].includes(payload.role)) {
+    errors.push('Role harus admin atau petugas.')
+  }
+  if (isCreate && payload.password.length < 6) {
+    errors.push('Password minimal 6 karakter.')
+  }
+  if (!isCreate && payload.password && payload.password.length < 6) {
+    errors.push('Password minimal 6 karakter.')
+  }
+
+  return { payload, errors }
+}
+
+/**
  * Validasi kredensial admin sebelum diteruskan ke Supabase Auth.
  * Login admin memakai email (standar GoTrue), bukan username.
  */

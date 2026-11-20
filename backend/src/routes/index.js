@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import authRoutes from './auth.routes.js'
 import requestRoutes from './request.routes.js'
+import userRoutes from './user.routes.js'
+import historyRoutes from './history.routes.js'
 
 const router = Router()
 
@@ -11,5 +13,7 @@ router.get('/health', (req, res) => {
 
 router.use('/auth', authRoutes)
 router.use('/requests', requestRoutes)
+router.use('/admin/users', userRoutes)
+router.use('/history', historyRoutes)
 
 export default router

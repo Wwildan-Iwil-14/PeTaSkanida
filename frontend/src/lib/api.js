@@ -185,6 +185,41 @@ export const api = {
       body: { dihubungi },
       token: currentToken(),
     }),
+
+  // ---- Kelola tamu (CRUD admin) ----
+
+  createGuest: payload =>
+    authedRequest('/requests/admin', { method: 'POST', body: payload, token: currentToken() }),
+
+  updateRequest: (id, payload) =>
+    authedRequest(`/requests/${id}`, { method: 'PATCH', body: payload, token: currentToken() }),
+
+  deleteRequest: id =>
+    authedRequest(`/requests/${id}`, { method: 'DELETE', token: currentToken() }),
+
+  // ---- Riwayat kunjungan (CRUD admin) ----
+
+  createHistory: payload =>
+    authedRequest('/history', { method: 'POST', body: payload, token: currentToken() }),
+
+  updateHistory: (id, payload) =>
+    authedRequest(`/history/${id}`, { method: 'PATCH', body: payload, token: currentToken() }),
+
+  deleteHistory: id =>
+    authedRequest(`/history/${id}`, { method: 'DELETE', token: currentToken() }),
+
+  // ---- Akun admin / petugas (CRUD admin) ----
+
+  listAdminUsers: () => authedRequest('/admin/users', { token: currentToken() }),
+
+  createAdminUser: payload =>
+    authedRequest('/admin/users', { method: 'POST', body: payload, token: currentToken() }),
+
+  updateAdminUser: (id, payload) =>
+    authedRequest(`/admin/users/${id}`, { method: 'PATCH', body: payload, token: currentToken() }),
+
+  deleteAdminUser: id =>
+    authedRequest(`/admin/users/${id}`, { method: 'DELETE', token: currentToken() }),
 }
 
 export { BASE_URL as API_BASE_URL }
