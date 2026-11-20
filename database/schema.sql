@@ -24,7 +24,10 @@ CREATE TABLE IF NOT EXISTS public.req_pending (
   waktu text,
   jumlah integer DEFAULT 1,
   dihubungi boolean NOT NULL DEFAULT false,
-  dihubungi_at timestamptz
+  dihubungi_at timestamptz,
+  surat_tugas_url text,
+  surat_tugas_drive_id text,
+  surat_tugas_nama text
 );
 
 -- req_acc: Request yang diterima admin dan masih aktif / belum selesai
@@ -39,6 +42,9 @@ CREATE TABLE IF NOT EXISTS public.req_acc (
   tanggal date DEFAULT CURRENT_DATE,
   waktu text,
   jumlah integer DEFAULT 1,
+  surat_tugas_url text,
+  surat_tugas_drive_id text,
+  surat_tugas_nama text,
   CONSTRAINT fk_req_acc_pending FOREIGN KEY (id)
     REFERENCES public.req_pending(id) ON DELETE CASCADE
 );
@@ -54,6 +60,9 @@ CREATE TABLE IF NOT EXISTS public.req_reject (
   tanggal date DEFAULT CURRENT_DATE,
   waktu text,
   jumlah integer DEFAULT 1,
+  surat_tugas_url text,
+  surat_tugas_drive_id text,
+  surat_tugas_nama text,
   CONSTRAINT fk_req_reject_pending FOREIGN KEY (id)
     REFERENCES public.req_pending(id) ON DELETE CASCADE
 );
@@ -70,6 +79,9 @@ CREATE TABLE IF NOT EXISTS public.riwayat (
   tanggal date DEFAULT CURRENT_DATE,
   waktu text,
   jumlah integer DEFAULT 1,
+  surat_tugas_url text,
+  surat_tugas_drive_id text,
+  surat_tugas_nama text,
   CONSTRAINT fk_riwayat_pending FOREIGN KEY (id)
     REFERENCES public.req_pending(id) ON DELETE CASCADE
 );

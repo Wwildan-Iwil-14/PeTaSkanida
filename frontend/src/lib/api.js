@@ -71,7 +71,10 @@ export function loadToken() {
 // ---- Permintaan HTTP ----
 
 async function rawRequest(path, { method = 'GET', body, token } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+  // FormData berisi file: biarkan browser yang menentukan boundary
+  // multipart/form-data (Content-Type tidak boleh di-set manual).
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  const headers = isFormData ? {} : { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
 
   let response
@@ -79,7 +82,7 @@ async function rawRequest(path, { method = 'GET', body, token } = {}) {
     response = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
     })
   } catch {
     throw new ApiError(
@@ -168,6 +171,10 @@ export const api = {
   listRequests: () => authedRequest('/requests', { token: currentToken() }),
 
   createRequest: payload => rawRequest('/requests', { method: 'POST', body: payload }),
+
+  /** Kirim request tamu berikut surat tugas opsional (FormData / multipart). */
+  createRequestWithFile: formData =>
+    rawRequest('/requests', { method: 'POST', body: formData }),
 
   approveRequest: id =>
     authedRequest(`/requests/${id}/approve`, { method: 'POST', token: currentToken() }),

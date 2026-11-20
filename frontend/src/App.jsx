@@ -10,10 +10,14 @@ import {
   Loader2, AlertCircle, Moon, Sun, Copy, Check,
   CircleDashed, BadgeCheck, ArrowRight, ArrowLeft, Info, Mail,
   Phone, Send, Plus, ChevronDown, Download, AlertTriangle, Camera,
-  Pencil, Trash2, UserPlus
+  Pencil, Trash2, UserPlus, FileText, UploadCloud
 } from 'lucide-react'
 
 const THEME_KEY = 'peta-skanida.theme'
+
+// Surat tugas: opsional, PDF, maksimal 4 MB.
+const SURAT_TUGAS_MAX_SIZE = 4 * 1024 * 1024
+const SURAT_TUGAS_ACCEPT = '.pdf,application/pdf'
 
 const CARD = 'rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
 const FIELD = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
@@ -80,6 +84,8 @@ function mapRecord(r, status) {
     people: r.jumlah || 1,
     contacted: Boolean(r.dihubungi),
     contactedAt: r.dihubungi_at || null,
+    suratTugasUrl: r.surat_tugas_url || '',
+    suratTugasNama: r.surat_tugas_nama || '',
     status,
   }
 }
@@ -361,6 +367,8 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
   const [customTujuanOpen, setCustomTujuanOpen] = useState(false)
   const [customTujuan, setCustomTujuan] = useState('')
   const [error, setError] = useState('')
+  const [suratTugas, setSuratTugas] = useState(null)
+  const [fileError, setFileError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const fields = [
@@ -399,6 +407,34 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
     setTujuan(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])
   }
 
+  function handleSuratTugasChange(e) {
+    const file = e.target.files?.[0] || null
+    setFileError('')
+    if (!file) {
+      setSuratTugas(null)
+      return
+    }
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+    if (!isPdf) {
+      setSuratTugas(null)
+      setFileError('Surat tugas harus berformat PDF.')
+      return
+    }
+    if (file.size > SURAT_TUGAS_MAX_SIZE) {
+      setSuratTugas(null)
+      setFileError('Ukuran surat tugas maksimal 4 MB.')
+      return
+    }
+    setSuratTugas(file)
+  }
+
+  function removeSuratTugas() {
+    setSuratTugas(null)
+    setFileError('')
+    const input = document.getElementById('guest-surat-tugas')
+    if (input) input.value = ''
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     const finalTujuan = [...tujuan]
@@ -417,19 +453,26 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
       setError('Nomor HP tidak valid, gunakan 8-15 digit angka.')
       return
     }
+    if (suratTugas && suratTugas.size > SURAT_TUGAS_MAX_SIZE) {
+      setError('Ukuran surat tugas maksimal 4 MB.')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
-      const result = await api.createRequest({
-        nama: form.name.trim(),
-        email: form.email.trim(),
-        no_hp: form.phone.trim(),
-        tujuan: finalTujuan.join(', '),
-        keperluan: form.keperluan.trim(),
-        tanggal: form.date,
-        waktu: form.time,
-        jumlah: parseInt(form.people) || 1,
-      })
+      const formData = new FormData()
+      formData.append('nama', form.name.trim())
+      formData.append('email', form.email.trim())
+      formData.append('no_hp', form.phone.trim())
+      formData.append('tujuan', finalTujuan.join(', '))
+      formData.append('keperluan', form.keperluan.trim())
+      formData.append('tanggal', form.date)
+      formData.append('waktu', form.time)
+      formData.append('jumlah', String(parseInt(form.people) || 1))
+      // Opsional: hanya dikirim bila tamu memilih file.
+      if (suratTugas) formData.append('suratTugas', suratTugas)
+
+      const result = await api.createRequestWithFile(formData)
       const requestId = result?.request?.id
       // Kode unik per permintaan dipakai sebagai isi barcode.
       // ID database memastikan setiap orang mendapat barcode berbeda.
@@ -447,6 +490,14 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
         tanggal: form.date,
         waktu: form.time,
         jumlah: parseInt(form.people) || 1,
+        suratTugasNama:
+          result?.request?.surat_tugas_nama ||
+          result?.suratTugas?.nama ||
+          suratTugas?.name ||
+          '',
+        suratTugasUrl:
+          result?.request?.surat_tugas_url || result?.suratTugas?.url || '',
+        suratTugasEmail: result?.suratTugas?.tujuanEmail || '',
       })
     } catch (err) {
       setError('Gagal mengirim permintaan: ' + (err.message || 'Terjadi kesalahan. Silakan coba lagi.'))
@@ -657,6 +708,58 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
               </div>
             </div>
 
+            <div className="mt-4">
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="guest-surat-tugas" className="block text-[12px] font-semibold text-slate-700 dark:text-slate-300">
+                  Surat Tugas{' '}
+                  <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">Opsional</span>
+                </label>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">PDF · maks. 4 MB</span>
+              </div>
+              <label
+                htmlFor="guest-surat-tugas"
+                className={`mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-3.5 py-3 transition ${
+                  suratTugas
+                    ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-500/40 dark:bg-emerald-500/10'
+                    : 'border-slate-300 bg-slate-50/70 hover:border-blue-300 hover:bg-blue-50/50 dark:border-slate-600 dark:bg-slate-800/40 dark:hover:border-blue-500/40'
+                }`}
+              >
+                <input
+                  id="guest-surat-tugas"
+                  type="file"
+                  accept={SURAT_TUGAS_ACCEPT}
+                  onChange={handleSuratTugasChange}
+                  className="sr-only"
+                />
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${suratTugas ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300' : 'bg-white text-slate-400 shadow-sm dark:bg-slate-900 dark:text-slate-500'}`}>
+                  {suratTugas ? <FileText size={18} /> : <UploadCloud size={18} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12px] font-semibold text-slate-700 dark:text-slate-200">
+                    {suratTugas ? suratTugas.name : 'Klik untuk pilih surat tugas'}
+                  </span>
+                  <span className="mt-0.5 block text-[10.5px] text-slate-400 dark:text-slate-500">
+                    {suratTugas
+                      ? `${(suratTugas.size / 1024 / 1024).toFixed(2)} MB · siap diunggah`
+                      : 'Tidak wajib diisi. Biarkan kosong jika tidak ada.'}
+                  </span>
+                </span>
+                {suratTugas && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeSuratTugas() }}
+                    aria-label="Hapus surat tugas"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-white hover:text-rose-500 dark:hover:bg-slate-800"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </label>
+              {fileError && (
+                <p className="mt-1.5 text-[11px] font-medium text-rose-500 dark:text-rose-400">{fileError}</p>
+              )}
+            </div>
+
             {error && (
               <p className="mt-3 rounded-xl bg-rose-50 px-3.5 py-2.5 text-[12px] font-medium text-rose-600 ring-1 ring-inset ring-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/20">{error}</p>
             )}
@@ -755,7 +858,16 @@ function GuestSuccessPage({ data, onAgain, onBack, theme, onToggleTheme, saved, 
     ['Tanggal', formatDate(data?.tanggal)],
     ['Waktu', data?.waktu ? `${data.waktu} WIB` : '-'],
     ['Jumlah Pengunjung', data?.jumlah ? `${data.jumlah} orang` : '-'],
+    ['Surat Tugas', data?.suratTugasUrl ? (
+      <a href={data.suratTugasUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:underline dark:text-indigo-400">
+        <FileText size={13} /> {data.suratTugasNama || 'Lihat surat tugas'}
+      </a>
+    ) : (data?.suratTugasNama || '-')],
   ]
+
+  if (data?.suratTugasUrl) {
+    rows.push(['Ditujukan Ke', data?.suratTugasEmail || '-'])
+  }
 
   return (
     <div className="relative min-h-screen bg-[#f5f7fb] px-4 py-10 dark:bg-slate-950 sm:px-8">
@@ -1091,13 +1203,14 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1040px] text-left text-sm">
+      <table className="w-full min-w-[1140px] text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60 dark:text-slate-400">
           <tr>
             <th className="px-6 py-4 font-semibold">Pengunjung</th>
             <th className="px-6 py-4 font-semibold">Email</th>
             <th className="px-6 py-4 font-semibold">Tujuan</th>
             <th className="px-6 py-4 font-semibold">Keperluan</th>
+            <th className="px-6 py-4 font-semibold">Surat Tugas</th>
             <th className="px-6 py-4 font-semibold">Jadwal</th>
             <th className="px-6 py-4 font-semibold">Jumlah</th>
             <th className="px-6 py-4 font-semibold">Status</th>
@@ -1126,6 +1239,13 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
               </td>
               <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.tujuan}</td>
               <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.keperluan}</td>
+              <td className="px-6 py-4">
+                {item.suratTugasUrl ? (
+                  <a href={item.suratTugasUrl} target="_blank" rel="noreferrer" title={item.suratTugasNama || 'Buka surat tugas'} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20">
+                    <FileText size={13} /> Lihat
+                  </a>
+                ) : <span className="text-xs text-slate-400 dark:text-slate-500">-</span>}
+              </td>
               <td className="px-6 py-4">
                 <div className="font-medium text-slate-700 dark:text-slate-300">{formatDate(item.date)}</div>
                 <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.time ? `${item.time} WIB` : '-'}</div>

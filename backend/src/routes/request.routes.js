@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { httpError } from '../lib/httpError.js'
 import { validateRequestPayload } from '../lib/validate.js'
+import { uploadSuratTugas as sendToGoogleDrive } from '../lib/googleDrive.js'
+import { uploadSuratTugas as uploadSuratTugasMiddleware } from '../middleware/upload.js'
 import { requireAdmin } from '../middleware/auth.js'
 
 const router = Router()
@@ -32,6 +34,15 @@ const toRecord = row => ({
   tanggal: row.tanggal,
   waktu: row.waktu,
   jumlah: row.jumlah,
+  // Hanya disertakan bila ada file, supaya alur approve/reject tetap jalan
+  // sebelum migration dijalankan / untuk request tanpa surat tugas.
+  ...(row.surat_tugas_url
+    ? {
+        surat_tugas_url: row.surat_tugas_url,
+        surat_tugas_drive_id: row.surat_tugas_drive_id || null,
+        surat_tugas_nama: row.surat_tugas_nama || null,
+      }
+    : {}),
 })
 
 /**
@@ -40,19 +51,73 @@ const toRecord = row => ({
  */
 router.post(
   '/',
+  uploadSuratTugasMiddleware,
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateRequestPayload(req.body)
     if (errors.length > 0) throw httpError(422, errors.join(' '))
 
-    const { data, error } = await supabase
+    // Surat tugas bersifat opsional — hanya diunggah bila ada file.
+    let driveFile = null
+    if (req.file) {
+      driveFile = await sendToGoogleDrive({
+        buffer: req.file.buffer,
+        originalName: req.file.originalname,
+        nama: payload.nama,
+      })
+      payload.surat_tugas_url = driveFile.url
+      payload.surat_tugas_drive_id = driveFile.id
+      payload.surat_tugas_nama = driveFile.name
+    }
+
+    let { data, error } = await supabase
       .from('req_pending')
       .insert(payload)
-      .select('id, nama, tanggal, waktu, jumlah')
+      .select('id, nama, tanggal, waktu, jumlah, surat_tugas_url, surat_tugas_nama')
       .single()
+
+    // Database belum ter-migration → simpan request tanpa metadata file
+    // agar tamu tetap bisa mengirim. Tautan tetap dikembalikan ke frontend.
+    if (error && /surat_tugas/i.test(error.message) && /does not exist|could not find/i.test(error.message)) {
+      console.warn(
+        '[backend] Kolom surat_tugas belum ada. Jalankan ' +
+          'database/migrations/20261120000000_add_surat_tugas_columns.sql di Supabase SQL Editor.',
+      )
+      const {
+        surat_tugas_url,
+        surat_tugas_drive_id,
+        surat_tugas_nama,
+        ...basePayload
+      } = payload
+      ;({ data, error } = await supabase
+        .from('req_pending')
+        .insert(basePayload)
+        .select('id, nama, tanggal, waktu, jumlah')
+        .single())
+    }
 
     if (error) throw httpError(502, `Gagal menyimpan permintaan: ${error.message}`)
 
-    res.status(201).json({ request: data })
+    res.status(201).json({
+      request: data,
+      // Email tujuan berasal dari konfigurasi SURAT_TUGAS_EMAIL (sementara
+      // rubikesper@gmail.com, nanti diganti email sekolah lewat .env).
+      ...(driveFile
+        ? {
+            suratTugas: {
+              url: driveFile.url,
+              nama: driveFile.name,
+              tujuanEmail: driveFile.tujuanEmail,
+            },
+          }
+        : {}),
+      ...(driveFile && !data?.surat_tugas_url
+        ? {
+            warning:
+              'Surat tugas berhasil diunggah ke Google Drive, tetapi database belum menyimpan tautannya. ' +
+              'Jalankan migration 20261120000000_add_surat_tugas_columns.sql di Supabase SQL Editor.',
+          }
+        : {}),
+    })
   }),
 )
 
