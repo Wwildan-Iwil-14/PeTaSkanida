@@ -215,6 +215,15 @@ export const api = {
   deleteHistory: id =>
     authedRequest(`/history/${id}`, { method: 'DELETE', token: currentToken() }),
 
+  // ---- Scan QR / barcode tamu ----
+
+  /** Catat hasil scan dari HP → admin di laptop menerima notifikasi real-time. */
+  scanGuest: (kode, deviceId) =>
+    authedRequest('/scans', { method: 'POST', body: { kode, deviceId }, token: currentToken() }),
+
+  listScans: (limit = 20) =>
+    authedRequest(`/scans?limit=${limit}`, { token: currentToken() }),
+
   // ---- Akun admin / petugas (CRUD admin) ----
 
   listAdminUsers: () => authedRequest('/admin/users', { token: currentToken() }),

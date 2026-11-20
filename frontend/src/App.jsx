@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, saveSession, clearSession, loadToken } from './lib/api'
-import { subscribeToRequests } from './lib/realtime'
+import { subscribeToRequests, subscribeToScans } from './lib/realtime'
 import { drawBarcode, downloadBarcode, BARCODE_CANVAS_ID } from './lib/barcode'
+import { drawQr, QR_CANVAS_ID } from './lib/qr'
+import { ScanPage, ScanAlerts, getDeviceId, notifySound } from './ScanPage'
 import {
   LayoutDashboard, Users, ClipboardList, History, LogOut, Menu, X,
   Search, CalendarDays, Clock3, CheckCircle2, XCircle, Hourglass,
@@ -10,7 +12,7 @@ import {
   Loader2, AlertCircle, Moon, Sun, Copy, Check,
   CircleDashed, BadgeCheck, ArrowRight, ArrowLeft, Info, Mail,
   Phone, Send, Plus, ChevronDown, Download, AlertTriangle, Camera,
-  Pencil, Trash2, UserPlus, FileText, UploadCloud
+  Pencil, Trash2, UserPlus, FileText, UploadCloud, ScanLine
 } from 'lucide-react'
 
 const THEME_KEY = 'peta-skanida.theme'
@@ -58,6 +60,7 @@ const navItems = [
   { id: 'request', label: 'Daftar Request', icon: ClipboardList },
   { id: 'tamu', label: 'Kelola Tamu', icon: Users },
   { id: 'riwayat', label: 'Riwayat Kunjungan', icon: History },
+  { id: 'scan', label: 'Scan Tamu', icon: ScanLine },
   { id: 'users', label: 'Pengguna', icon: ShieldCheck },
 ]
 
@@ -803,6 +806,7 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
 // Barcode unik untuk setiap permintaan, lengkap dengan tombol unduh.
 function BarcodeBlock({ value, saved, onDownloaded }) {
   const canvasRef = useRef(null)
+  const qrRef = useRef(null)
 
   useEffect(() => {
     if (!canvasRef.current || !value) return
@@ -811,6 +815,12 @@ function BarcodeBlock({ value, saved, onDownloaded }) {
     } catch {
       // Jika nilai tidak didukung, biarkan kanvas kosong.
     }
+  }, [value])
+
+  // QR code berisi kode yang sama; ini yang discan petugas lewat HP.
+  useEffect(() => {
+    if (!qrRef.current || !value) return
+    drawQr(qrRef.current, value, 220).catch(() => {})
   }, [value])
 
   function handleDownload() {
@@ -826,13 +836,17 @@ function BarcodeBlock({ value, saved, onDownloaded }) {
       <div className="mt-3 flex justify-center overflow-x-auto rounded-xl bg-white p-3 dark:bg-slate-100">
         <canvas ref={canvasRef} id={BARCODE_CANVAS_ID} className="max-w-full" aria-label={`Barcode ${value}`} role="img" />
       </div>
+      <div className="mt-3 flex justify-center rounded-xl bg-white p-3 dark:bg-slate-100">
+        <canvas ref={qrRef} id={QR_CANVAS_ID} className="h-[220px] w-[220px] max-w-full" aria-label={`QR code ${value}`} role="img" />
+      </div>
+      <p className="mt-2 text-center text-[11px] text-slate-500 dark:text-slate-400">Petugas dapat memindai barcode maupun QR code di atas.</p>
       <button
         type="button"
         onClick={handleDownload}
         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-200/70 transition hover:bg-blue-600 dark:shadow-blue-950/40"
       >
         <Download size={16} />
-        {saved ? 'Unduh Lagi Barcode' : 'Unduh Barcode'}
+        {saved ? 'Unduh Lagi Tiket' : 'Unduh Tiket (Barcode + QR)'}
       </button>
       <p className="mt-2 text-center text-xs font-semibold text-rose-500 dark:text-rose-400">Kamu harus mengunduh barcode</p>
       {saved ? (
@@ -1656,6 +1670,11 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [scans, setScans] = useState([])
+  const [scanAlerts, setScanAlerts] = useState([])
+  const loadedOnceRef = useRef(false)
+  const lastScanIdRef = useRef(null)
+  const deviceIdRef = useRef(getDeviceId())
 
   function showNotice(message, duration = 3200) {
     setNotice(message)
@@ -1664,16 +1683,49 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
 
   // Ambil semua data request dari backend
   async function fetchData() {
-    setLoading(true)
+    // Spinner hanya pada pemuatan pertama. Muat ulang realtime berikutnya
+    // berjalan di latar belakang agar kamera scanner tidak ikut terputus.
+    if (!loadedOnceRef.current) setLoading(true)
     setError(null)
     try {
       const { requests: rows } = await api.listRequests()
       setRequests((rows || []).map(row => mapRecord(row, row.status)))
+      loadedOnceRef.current = true
     } catch (err) {
       setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
     } finally {
       setLoading(false)
     }
+  }
+
+  // Ambil scan terbaru. Scan baru dari perangkat LAIN (mis. HP petugas)
+  // memunculkan notifikasi pop-up + bunyi di layar ini.
+  async function fetchScans() {
+    try {
+      const { scans: rows } = await api.listScans(30)
+      const list = rows || []
+      setScans(list)
+
+      const maxId = list.reduce((max, row) => Math.max(max, Number(row.id) || 0), 0)
+      const previous = lastScanIdRef.current
+      lastScanIdRef.current = Math.max(previous ?? 0, maxId)
+      if (previous === null) return // pemuatan pertama: jangan notifikasi data lama
+
+      const fresh = list
+        .filter(row => (Number(row.id) || 0) > previous && row.device_id !== deviceIdRef.current)
+        .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0))
+      if (!fresh.length) return
+
+      notifySound(fresh[fresh.length - 1].hasil)
+      setScanAlerts(current => [...[...fresh].reverse(), ...current].slice(0, 4))
+      fresh.forEach(row => window.setTimeout(() => dismissScanAlert(row.id), 12000))
+    } catch (err) {
+      console.error('[frontend] Gagal memuat scan:', err)
+    }
+  }
+
+  function dismissScanAlert(id) {
+    setScanAlerts(current => current.filter(item => item.id !== id))
   }
 
   async function fetchUsers() {
@@ -1694,7 +1746,19 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
     // Otomatis refresh ketika tamu mengirim request atau admin memproses.
     const unsubscribe = subscribeToRequests(() => fetchData())
 
-    return unsubscribe
+    // Notifikasi scan HP → laptop: realtime + polling 6 detik sebagai cadangan
+    // (berguna bila realtime Supabase belum aktif / koneksi sempat putus).
+    fetchScans()
+    const unsubscribeScans = subscribeToScans(() => fetchScans())
+    const poll = window.setInterval(() => {
+      if (!document.hidden) fetchScans()
+    }, 6000)
+
+    return () => {
+      unsubscribe()
+      unsubscribeScans()
+      window.clearInterval(poll)
+    }
   }, [])
 
   const visibleRequests = useMemo(() => requests.filter(item => {
@@ -1878,12 +1942,14 @@ function AdminApp({ onLogout, adminName, theme, onToggleTheme }) {
               {active === 'tamu' && <ListingPage type="tamu" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} onComplete={completeVisit} onCreate={createGuest} onUpdate={updateGuest} onDelete={removeGuest} />}
               {active === 'request' && <ListingPage type="request" visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} contactFilter={contactFilter} onContactFilterChange={setContactFilter} onUpdateStatus={updateStatus} onToggleContacted={toggleContacted} sortOrder={sortOrder} onSortOrderChange={setSortOrder} />}
               {active === 'riwayat' && <HistoryPage visibleRequests={visibleRequests} query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} onCreate={createHistory} onUpdate={updateHistory} onDelete={removeHistory} />}
+              {active === 'scan' && <ScanPage scans={scans} onScanned={fetchScans} />}
               {active === 'users' && <UsersPage users={users} currentUserId={currentUserId} onCreate={createUser} onUpdate={updateUser} onDelete={removeUser} />}
             </>
           )}
           <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
         </div>
       </main>
+      <ScanAlerts alerts={scanAlerts} onDismiss={dismissScanAlert} onOpen={scan => { dismissScanAlert(scan.id); goTo('scan') }} />
       {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-[calc(100%-40px)] items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl dark:bg-slate-800 dark:ring-1 dark:ring-slate-700"><CheckCircle2 size={17} className="text-emerald-400" />{notice}</div>}
     </div>
   )

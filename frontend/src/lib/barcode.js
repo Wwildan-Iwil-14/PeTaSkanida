@@ -3,6 +3,7 @@
 // Tidak memakai library eksternal agar tetap bisa
 // dipakai tanpa perlu npm install tambahan.
 // ============================================
+import { QR_CANVAS_ID } from './qr.js'
 
 // Pola Code 39: 9 elemen per karakter (baris-spasi bergantian,
 // diawali baris). 'n' = narrow (tipis), 'w' = wide (tebal).
@@ -147,12 +148,28 @@ export const BARCODE_CANVAS_ID = 'guest-barcode-canvas'
  * Mengembalikan true jika unduhan berhasil dipicu.
  */
 export function downloadBarcode(value) {
-  const canvas = document.getElementById(BARCODE_CANVAS_ID)
-  if (!canvas) return false
+  const barcode = document.getElementById(BARCODE_CANVAS_ID)
+  if (!barcode) return false
   try {
+    // Bila QR juga ditampilkan, gabungkan keduanya dalam satu gambar tiket
+    // (barcode di atas, QR di bawah) supaya satu file bisa dipakai kedua-duanya.
+    const qr = document.getElementById(QR_CANVAS_ID)
+    let source = barcode
+    if (qr && qr.width > 0) {
+      const gap = 16
+      const combined = document.createElement('canvas')
+      combined.width = Math.max(barcode.width, qr.width)
+      combined.height = barcode.height + gap + qr.height + gap
+      const ctx = combined.getContext('2d')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, combined.width, combined.height)
+      ctx.drawImage(barcode, (combined.width - barcode.width) / 2, 0)
+      ctx.drawImage(qr, (combined.width - qr.width) / 2, barcode.height + gap)
+      source = combined
+    }
     const link = document.createElement('a')
-    link.download = `barcode-${value}.png`
-    link.href = canvas.toDataURL('image/png')
+    link.download = `tiket-${value}.png`
+    link.href = source.toDataURL('image/png')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

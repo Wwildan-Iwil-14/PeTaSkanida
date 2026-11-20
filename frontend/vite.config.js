@@ -10,13 +10,9 @@ export default defineConfig(({ mode }) => {
     '/api': { target: apiTarget, changeOrigin: true },
   }
 
-  // Development tetap memakai subpath /Peta-Skanida/, sedangkan build
-  // produksi (Vercel) dilayani dari root domain agar aset tidak 404.
-  const base = env.VITE_BASE_PATH || (mode === 'production' ? '/' : '/Peta-Skanida/')
-
   return {
     plugins: [react()],
-    base,
+    base: '/Peta-Skanida/',
     server: { proxy },
     preview: { proxy },
   }

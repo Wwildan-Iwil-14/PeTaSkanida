@@ -47,6 +47,8 @@ export function createApp() {
         approve: 'POST /api/requests/:id/approve',
         reject: 'POST /api/requests/:id/reject',
         contacted: 'PATCH /api/requests/:id/contacted',
+        scan: 'POST /api/scans (admin)',
+        scanList: 'GET /api/scans (admin)',
       },
     })
   })

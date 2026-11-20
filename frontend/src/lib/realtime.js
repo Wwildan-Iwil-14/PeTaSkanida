@@ -24,3 +24,20 @@ export function subscribeToRequests(onChange) {
     supabase.removeChannel(channel)
   }
 }
+
+/**
+ * Berlangganan scan baru (INSERT di scan_logs). Dipakai laptop admin untuk
+ * menampilkan notifikasi saat petugas memindai QR tamu lewat HP.
+ */
+export function subscribeToScans(onInsert) {
+  if (!supabase) return () => {}
+
+  const channel = supabase
+    .channel(`realtime-scans-${Math.random().toString(36).slice(2, 8)}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'scan_logs' }, onInsert)
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}

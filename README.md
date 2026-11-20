@@ -23,6 +23,7 @@ Panduan ini disusun langkah demi langkah. Ikuti urut dari atas ke bawah. Tidak b
 10. [Pemecahan Masalah (Troubleshooting)](#10-pemecahan-masalah-troubleshooting)
 11. [Keamanan Penting](#11-keamanan-penting)
 12. [Perintah Tambahan](#12-perintah-tambahan)
+13. [Fitur Scan QR & Barcode (HP → Laptop Admin)](#13-fitur-scan-qr-hp--notifikasi-di-laptop-admin)
 
 ---
 
@@ -453,3 +454,29 @@ Form tetap bisa dipakai **tanpa** file. Jika migration belum dijalankan, request
 ## Lisensi
 
 PeTa SKANIDA — SMKN 2 Kota Magelang.
+
+---
+
+## 13. Fitur Scan QR (HP → Notifikasi di Laptop Admin)
+
+Petugas memindai QR/barcode tiket tamu memakai kamera HP. Hasilnya langsung
+muncul sebagai **notifikasi + bunyi** di laptop/komputer admin, dan tercatat di
+menu **Scan Tamu**.
+
+**Alur:**
+
+1. Tamu mengisi form → halaman sukses menampilkan **barcode + QR code** (isinya `REQ-xxx`). Tombol unduh menyimpan keduanya dalam satu gambar tiket.
+2. Petugas login admin di **HP**, buka menu **Scan Tamu**, tekan **Aktifkan Kamera**, lalu arahkan ke QR/barcode tamu.
+3. Backend (`POST /api/scans`) memeriksa status tamu (Diterima / Pending / Ditolak / Selesai / tidak dikenal) dan menyimpannya ke tabel `scan_logs`.
+4. Laptop admin yang sedang membuka dashboard menerima perubahan lewat Supabase Realtime (cadangan: polling 6 detik) → pop-up di kanan atas + bunyi.
+
+**Yang perlu dilakukan sekali:**
+
+- Jalankan `database/migrations/20261120000001_create_scan_logs.sql` di Supabase SQL Editor (atau `schema.sql` untuk database baru).
+- Di folder `frontend` jalankan `npm install` (ada paket baru: `qrcode`, `html5-qrcode`).
+
+**Catatan penting:**
+
+- Kamera browser **hanya jalan lewat HTTPS** (atau `localhost`). Saat testing dari HP lewat Wi-Fi lokal (`http://192.168.x.x`), kamera akan diblokir; gunakan versi yang sudah di-deploy (Vercel) atau tunnel HTTPS seperti ngrok/cloudflared.
+- Scan dari HP tidak memunculkan pop-up di HP itu sendiri, hanya di perangkat lain yang membuka dashboard.
+- Tabel `scan_logs` sengaja tidak menyimpan data pribadi; detail tamu diambil lewat backend yang wajib login admin.
