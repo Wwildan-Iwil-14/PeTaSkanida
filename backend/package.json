@@ -13,13 +13,16 @@
     "start": "node src/server.js",
     "db:sync": "node scripts/sync-migrations.js",
     "admin:create": "node scripts/create-admin.js",
-    "storage:setup": "node scripts/storage-setup.js"
+    "storage:setup": "node scripts/storage-setup.js",
+    "wa:test": "node scripts/test-whatsapp.js",
+    "push:keys": "node scripts/generate-vapid-keys.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "multer": "^2.5.0"
+    "multer": "^2.5.0",
+    "web-push": "^3.6.7"
   }
 }

@@ -24,6 +24,8 @@ Panduan ini disusun langkah demi langkah. Ikuti urut dari atas ke bawah. Tidak b
 11. [Keamanan Penting](#11-keamanan-penting)
 12. [Perintah Tambahan](#12-perintah-tambahan)
 13. [Fitur Scan QR & Barcode (HP → Laptop Admin)](#13-fitur-scan-qr-hp--notifikasi-di-laptop-admin)
+14. [Notifikasi WhatsApp ke Admin (Fonnte)](#14-notifikasi-whatsapp-ke-admin-fonnte)
+15. [Notifikasi Browser & Ekspor Riwayat](#15-notifikasi-browser--ekspor-riwayat)
 
 ---
 
@@ -480,3 +482,76 @@ menu **Scan Tamu**.
 - Kamera browser **hanya jalan lewat HTTPS** (atau `localhost`). Saat testing dari HP lewat Wi-Fi lokal (`http://192.168.x.x`), kamera akan diblokir; gunakan versi yang sudah di-deploy (Vercel) atau tunnel HTTPS seperti ngrok/cloudflared.
 - Scan dari HP tidak memunculkan pop-up di HP itu sendiri, hanya di perangkat lain yang membuka dashboard.
 - Tabel `scan_logs` sengaja tidak menyimpan data pribadi; detail tamu diambil lewat backend yang wajib login admin.
+
+---
+
+## 14. Notifikasi WhatsApp ke Admin (Fonnte)
+
+Setiap kali ada **tamu mengisi form reservasi**, admin mendapat pesan WhatsApp berisi
+nama, tujuan, keperluan, tanggal, jumlah tamu, dan kontak tamu. Notifikasi juga dikirim
+saat admin mengubah status menjadi **Diterima**, **Ditolak**, atau **Selesai**.
+
+**Yang perlu dilakukan sekali:**
+
+1. Daftar di <https://fonnte.com> dan ambil token API-nya.
+2. Tambahkan baris ini ke `backend/.env`:
+
+   ```env
+   FONNTE_TOKEN=token_dari_fonnte
+   WHATSAPP_NOTIFY_NUMBERS=081234567890,081987654321
+   ```
+
+   *(Ganti nomor dengan nomor admin. Boleh lebih dari satu, dipisah koma.)*
+
+3. Restart backend, lalu coba kirim pesan uji:
+
+   ```bash
+   cd backend
+   npm run wa:test
+   ```
+
+**Catatan:** token Fonnte **rahasia** dan hanya boleh di `backend/.env`, jangan pernah
+ditaruh di frontend atau di-commit. Jika token/nomor belum diisi, aplikasi tetap normal —
+cuma notifikasinya yang tidak dikirim. Detail kesalahan bisa dilihat di konsol backend.
+
+Kanal WhatsApp **tidak aktif secara default** (`NOTIFY_CHANNELS=push`) agar nomor
+sekolah tidak dipakai otomatis. Aktifkan dengan `NOTIFY_CHANNELS=whatsapp` atau
+`NOTIFY_CHANNELS=push,whatsapp`.
+
+---
+
+## 15. Notifikasi Browser & Ekspor Riwayat
+
+### Notifikasi tanpa WhatsApp
+
+Notifikasi kini bisa dikirim langsung ke **browser admin** (Web Push), jadi tidak
+perlu nomor WhatsApp sekolah dan tidak ada risiko ban. Pesan muncul walau dashboard
+sedang tidak dibuka, selama browser mengizinkan notifikasi.
+
+**Setup sekali:**
+
+1. Kunci VAPID sudah dibuat di `backend/.env` (`npm run push:keys` untuk membuat yang baru).
+2. Jalankan di Supabase SQL Editor:
+   `database/migrations/20261121000000_create_push_subscriptions.sql`
+3. Restart backend, buka dashboard di **HTTPS** (atau `localhost`), lalu klik
+   ikon **lonceng** di header dan izinkan notifikasi.
+
+Notifikasi dikirim saat tamu mendaftar dan saat status berubah menjadi Diterima /
+Ditolak / Selesai. Jika izin push ditolak, tetap ada notifikasi di dalam dashboard
+(dengan cadangan pengecekan tiap 15 detik).
+
+> **Soal storage:** notifikasi tidak disimpan di database. Yang tersimpan hanya
+> satu baris subscription per perangkat (endpoint + kunci enkripsi) di tabel
+> `push_subscriptions`. Isi pesan tidak pernah disimpan.
+
+### Ekspor Riwayat Kunjungan
+
+Tombol **Ekspor & Cetak** di halaman Riwayat Kunjungan menyediakan tiga pilihan:
+
+- **Lihat Web** — membuka halaman laporan rapi di tab baru, lengkap dengan tombol
+  Cetak / Simpan PDF.
+- **Excel (.xlsx)** — file Excel asli, tanpa perlu membuka browser dulu.
+- **CSV (.csv)** — UTF-8 (didukung Excel, karakter Indonesia tidak rusak).
+
+Semua ekspor mengikuti filter/pencarian yang sedang aktif. Tombol ini muncul untuk
+akun yang memiliki fitur **Cetak Riwayat**.

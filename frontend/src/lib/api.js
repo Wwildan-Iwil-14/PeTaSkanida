@@ -154,6 +154,23 @@ const currentToken = () => loadToken() || undefined
 export const api = {
   health: () => rawRequest('/health'),
 
+  // ---- Notifikasi Web Push ----
+  vapidPublicKey: () => rawRequest('/push/public-key'),
+
+  subscribePush: subscription =>
+    authedRequest('/push/subscribe', {
+      method: 'POST',
+      body: { subscription },
+      token: currentToken(),
+    }),
+
+  unsubscribePush: endpoint =>
+    authedRequest('/push/subscribe', {
+      method: 'DELETE',
+      body: { endpoint },
+      token: currentToken(),
+    }),
+
   /** Login admin (email + password) → { token, refreshToken, admin }. */
   login: (email, password) =>
     rawRequest('/auth/login', { method: 'POST', body: { email, password } }),

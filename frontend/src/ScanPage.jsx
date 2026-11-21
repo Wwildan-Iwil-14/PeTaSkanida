@@ -751,7 +751,7 @@ export function ScanPage({ scans = [], onScanned, onCompleteVisit }) {
 export function ScanAlerts({ alerts = [], onDismiss, onOpen }) {
   if (!alerts || !alerts.length) return null
   return (
-    <div className="fixed right-4 top-4 z-[90] flex w-[360px] max-w-[calc(100%-32px)] flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {alerts.map(scan => {
         const meta = HASIL[scan.hasil] || HASIL.tidak_ditemukan
         const Icon = meta.icon

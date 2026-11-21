@@ -129,6 +129,11 @@ Ganti password setelah login pertama (lihat [`../database/README.md`](../databas
 - **Kelola Tamu** — lihat tamu yang sudah diproses, hubungi lewat WhatsApp.
 - **Riwayat Kunjungan** — arsip semua permintaan yang sudah diproses.
 - Data **update otomatis** (real-time) ketika ada permintaan baru masuk.
+- **Ikon lonceng** di header — aktifkan/matikan notifikasi browser (Web Push)
+  untuk perangkat ini. Perlu HTTPS (localhost juga boleh) dan izin browser.
+- **Riwayat Kunjungan** — tombol **Ekspor & Cetak** menyediakan
+  **Lihat Web** (cetak/PDF), **Excel (.xlsx)**, dan **CSV (.csv)**. Semua mengikuti
+  filter yang sedang aktif.
 
 ---
 
@@ -142,10 +147,12 @@ frontend/
 │   ├── lib/
 │   │   ├── api.js         # penghubung ke backend (REST)
 │   │   ├── realtime.js    # langganan update real-time dari Supabase
+│   │   ├── push.js        # langganan notifikasi Web Push browser
+│   │   ├── export.js      # ekspor XLSX / CSV / tampilan web riwayat
 │   │   └── supabaseClient.js
 │   ├── assets/            # gambar/aset
 │   └── index.css          # gaya global (Tailwind)
-├── public/                # file publik (logo, dll)
+├── public/                # file publik (logo, sw.js service worker)
 ├── index.html
 ├── vite.config.js
 ├── tailwind.config.js

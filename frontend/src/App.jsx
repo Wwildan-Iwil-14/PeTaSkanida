@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, saveSession, clearSession, loadToken } from './lib/api'
 import { subscribeToRequests, subscribeToScans } from './lib/realtime'
+import { downloadCsv, downloadXlsx, openWebView } from './lib/export'
+import { enablePush, disablePush, getPushStatus } from './lib/push'
 import { drawBarcode, downloadBarcode, BARCODE_CANVAS_ID } from './lib/barcode'
 import { drawQr, QR_CANVAS_ID } from './lib/qr'
 import { ScanPage, ScanAlerts, getDeviceId, notifySound } from './ScanPage'
@@ -16,7 +18,8 @@ import {
   CircleDashed, BadgeCheck, ArrowRight, ArrowLeft, Info, Mail,
   Phone, Send, Plus, ChevronDown, Download, AlertTriangle, Camera,
   Pencil, Trash2, UserPlus, FileText, UploadCloud, ScanLine,
-  Database, Printer, CalendarClock, UserCog
+  Database, CalendarClock, UserCog,
+  Bell, BellOff, FileSpreadsheet
 } from 'lucide-react'
 
 const THEME_KEY = 'peta-skanida.theme'
@@ -1742,9 +1745,11 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
   </>
 }
 
-function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete, canPrint = false, canEdit = true }) {
+function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete, canPrint = false, canEdit = true, onNotice = () => {} }) {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportRef = useRef(null)
   const items = visibleRequests
     .filter(item => item.status === 'Selesai' || item.status === 'Ditolak')
     .slice()
@@ -1753,6 +1758,32 @@ function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, f
       return toValue(b) - toValue(a)
     })
   const completed = items.filter(item => item.status === 'Selesai').length
+  const exportTitle = (title || 'Riwayat Kunjungan').replace(/\s*\(.*\)$/, '').trim()
+
+  useEffect(() => {
+    if (!exportOpen) return undefined
+    const closeOnOutside = event => {
+      if (exportRef.current && !exportRef.current.contains(event.target)) setExportOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutside)
+    return () => document.removeEventListener('pointerdown', closeOnOutside)
+  }, [exportOpen])
+
+  function handleExport(format) {
+    setExportOpen(false)
+    if (!items.length) {
+      onNotice('Tidak ada data riwayat untuk diekspor.')
+      return
+    }
+    try {
+      if (format === 'web') openWebView(items, exportTitle)
+      else if (format === 'csv') downloadCsv(items, exportTitle)
+      else downloadXlsx(items, exportTitle)
+    } catch (err) {
+      onNotice(err.message || 'Gagal mengekspor riwayat.')
+    }
+  }
+
   return <>
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -1761,9 +1792,24 @@ function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, f
       </div>
       <div className="no-print flex flex-wrap items-center gap-2">
         {canPrint && (
-          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-            <Printer size={15} /> Cetak Riwayat
-          </button>
+          <div className="relative" ref={exportRef}>
+            <button type="button" onClick={() => setExportOpen(open => !open)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+              <Download size={15} /> Ekspor & Cetak <ChevronDown size={14} />
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                <button type="button" onClick={() => handleExport('web')} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                  <Eye size={15} className="text-indigo-500" /> Lihat Web (cetak / PDF)
+                </button>
+                <button type="button" onClick={() => handleExport('xlsx')} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                  <FileSpreadsheet size={15} className="text-emerald-600" /> Excel (.xlsx)
+                </button>
+                <button type="button" onClick={() => handleExport('csv')} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                  <FileText size={15} className="text-sky-600" /> CSV (.csv)
+                </button>
+              </div>
+            )}
+          </div>
         )}
         {canEdit && (
           <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
@@ -2058,21 +2104,93 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   const loadedOnceRef = useRef(false)
   const lastScanIdRef = useRef(null)
   const deviceIdRef = useRef(getDeviceId())
+  const [notifyAlerts, setNotifyAlerts] = useState([])
+  const [pushStatus, setPushStatus] = useState({ supported: false, permission: 'unsupported', subscribed: false })
+  const [pushBusy, setPushBusy] = useState(false)
+  const knownRequestsRef = useRef(null)
 
   function showNotice(message, duration = 3200) {
     setNotice(message)
     window.setTimeout(() => setNotice(''), duration)
   }
 
+  // Bandingkan data terbaru dengan snapshot sebelumnya untuk notifikasi in-app.
+  // Snapshot awal dibuat tanpa notifikasi agar data lama tidak muncul sebagai baru.
+  function announceChanges(rows) {
+    const list = rows || []
+    const next = new Map(list.map(row => [row.id, row.status]))
+    const previous = knownRequestsRef.current
+    const alerts = []
+
+    if (previous) {
+      const titles = {
+        Diterima: 'Permohonan diterima',
+        Ditolak: 'Permohonan ditolak',
+        Selesai: 'Kunjungan selesai',
+      }
+      for (const row of list) {
+        const code = `REQ-${String(row.id).padStart(3, '0')}`
+        const label = `${code} · ${row.nama || '-'} · ${row.tujuan || '-'}`
+        if (!previous.has(row.id)) {
+          alerts.push({
+            key: `new-${row.id}-${Date.now()}`,
+            title: 'Permintaan kunjungan baru',
+            body: label,
+            status: 'Pending',
+          })
+        } else if (previous.get(row.id) !== row.status) {
+          alerts.push({
+            key: `status-${row.id}-${row.status}-${Date.now()}`,
+            title: titles[row.status] || 'Status kunjungan berubah',
+            body: label,
+            status: row.status,
+          })
+        }
+      }
+    }
+
+    knownRequestsRef.current = next
+    if (!alerts.length) return
+
+    setNotifyAlerts(current => [...alerts.reverse(), ...current].slice(0, 4))
+    notifySound('valid')
+    alerts.forEach(alert => window.setTimeout(() => dismissNotifyAlert(alert.key), 12000))
+  }
+
+  function dismissNotifyAlert(key) {
+    setNotifyAlerts(current => current.filter(item => item.key !== key))
+  }
+
+  async function togglePush() {
+    setPushBusy(true)
+    try {
+      if (pushStatus.subscribed) {
+        await disablePush()
+        showNotice('Notifikasi browser dimatikan di perangkat ini.')
+      } else {
+        await enablePush()
+        showNotice('Notifikasi browser aktif di perangkat ini.')
+      }
+      setPushStatus(await getPushStatus())
+    } catch (err) {
+      showNotice(err.message || 'Gagal mengubah notifikasi browser.')
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
   // Ambil semua data request dari backend
-  async function fetchData() {
+  async function fetchData({ announce = false } = {}) {
     // Spinner hanya pada pemuatan pertama. Muat ulang realtime berikutnya
     // berjalan di latar belakang agar kamera scanner tidak ikut terputus.
     if (!loadedOnceRef.current) setLoading(true)
     setError(null)
     try {
       const { requests: rows } = await api.listRequests()
-      setRequests((rows || []).map(row => mapRecord(row, row.status)))
+      const list = rows || []
+      setRequests(list.map(row => mapRecord(row, row.status)))
+      if (announce) announceChanges(list)
+      else if (knownRequestsRef.current === null) announceChanges(list)
       loadedOnceRef.current = true
     } catch (err) {
       setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
@@ -2124,10 +2242,16 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     fetchData()
     if (features.includes('kelola_akun') || features.includes('tambah_edit_akun')) fetchUsers()
     api.me().then(({ admin: sessionAdmin }) => setCurrentUserId(sessionAdmin?.userId || '')).catch(() => {})
+    getPushStatus().then(setPushStatus).catch(() => {})
 
     // Berlangganan perubahan real-time dari database.
-    // Otomatis refresh ketika tamu mengirim request atau admin memproses.
-    const unsubscribe = subscribeToRequests(() => fetchData())
+    // Otomatis refresh + notifikasi in-app saat ada request baru / status berubah.
+    const unsubscribe = subscribeToRequests(() => fetchData({ announce: true }))
+
+    // Cadangan bila Realtime Supabase tidak aktif / koneksi sempat putus.
+    const requestPoll = window.setInterval(() => {
+      if (!document.hidden) fetchData({ announce: true })
+    }, 15000)
 
     // Notifikasi scan HP → laptop: realtime + polling 6 detik sebagai cadangan
     // (berguna bila realtime Supabase belum aktif / koneksi sempat putus).
@@ -2143,6 +2267,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
 
     return () => {
       unsubscribe()
+      window.clearInterval(requestPoll)
       unsubscribeScans()
       if (poll) window.clearInterval(poll)
     }
@@ -2332,6 +2457,26 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={togglePush}
+              disabled={pushBusy || !pushStatus.supported}
+              title={!pushStatus.supported
+                ? 'Notifikasi browser hanya tersedia lewat HTTPS atau localhost'
+                : pushStatus.subscribed
+                  ? 'Matikan notifikasi browser di perangkat ini'
+                  : 'Aktifkan notifikasi browser di perangkat ini'}
+              aria-label={pushStatus.subscribed ? 'Matikan notifikasi' : 'Aktifkan notifikasi'}
+              className={`grid h-10 w-10 place-items-center rounded-full border shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                pushStatus.subscribed
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300'
+                  : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+              }`}
+            >
+              {pushBusy
+                ? <Loader2 size={18} className="animate-spin" />
+                : pushStatus.subscribed ? <Bell size={18} /> : <BellOff size={18} />}
+            </button>
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400 dark:text-slate-500">{ROLE_LABELS[role] || role}</p></div>
             <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><UserRound size={19} /></div>
@@ -2422,6 +2567,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                   onUpdate={updateHistory}
                   onDelete={removeHistory}
                   canPrint={features.includes('cetak_riwayat')}
+                  onNotice={showNotice}
                   canEdit={true}
                 />
               )}
@@ -2435,6 +2581,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                   filter={filter}
                   onFilterChange={setFilter}
                   canPrint={features.includes('cetak_riwayat')}
+                  onNotice={showNotice}
                   canEdit={false}
                 />
               )}
@@ -2449,7 +2596,17 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
           <footer className="mt-10 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 PeTa SKANIDA · Admin Panel</span><span className="flex items-center gap-1"><CalendarCheck size={13} /> Sistem pengelolaan kunjungan</span></footer>
         </div>
       </main>
-      <ScanAlerts alerts={scanAlerts} onDismiss={dismissScanAlert} onOpen={scan => { dismissScanAlert(scan.id); goTo('scan') }} />
+      <div className="fixed right-4 top-4 z-[90] flex w-[360px] max-w-[calc(100%-32px)] flex-col gap-3">
+        <NotificationAlerts
+          alerts={notifyAlerts}
+          onDismiss={dismissNotifyAlert}
+          onOpen={alert => {
+            dismissNotifyAlert(alert.key)
+            goTo(alert.status === 'Selesai' || alert.status === 'Ditolak' ? 'riwayat' : 'request')
+          }}
+        />
+        <ScanAlerts alerts={scanAlerts} onDismiss={dismissScanAlert} onOpen={scan => { dismissScanAlert(scan.id); goTo('scan') }} />
+      </div>
       {notice && <div role="status" className="fixed bottom-5 right-5 z-[60] flex max-w-[calc(100%-40px)] items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl dark:bg-slate-800 dark:ring-1 dark:ring-slate-700"><CheckCircle2 size={17} className="text-emerald-400" />{notice}</div>}
     </div>
   )
@@ -2493,6 +2650,34 @@ function LeaveWarningModal({ onDownload, onScreenshot, onClose }) {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Notifikasi in-app untuk request baru & perubahan status (cadangan Web Push
+// saat browser tidak mengizinkan notifikasi). Ditumpuk di pojok kanan atas
+// bersama notifikasi scan QR dalam satu wadah di AdminApp.
+function NotificationAlerts({ alerts = [], onDismiss, onOpen }) {
+  if (!alerts.length) return null
+  return (
+    <div className="flex flex-col gap-3">
+      {alerts.map(alert => {
+        const Icon = alert.status === 'Ditolak' ? XCircle : alert.status === 'Selesai' ? BadgeCheck : Bell
+        return (
+          <div key={alert.key} role="alert" className="rounded-2xl border border-indigo-100 bg-white/95 p-4 shadow-xl backdrop-blur dark:border-indigo-500/30 dark:bg-slate-900/95">
+            <div className="flex items-start gap-3">
+              <Icon size={20} className="mt-0.5 shrink-0 text-indigo-500" />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-indigo-500"><Bell size={11} /> Notifikasi kunjungan</p>
+                <p className="mt-0.5 font-bold text-slate-800 dark:text-slate-100">{alert.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{alert.body}</p>
+                <button type="button" onClick={() => onOpen(alert)} className="mt-2 text-xs font-bold text-indigo-600 underline underline-offset-2 dark:text-indigo-400">Lihat data</button>
+              </div>
+              <button type="button" onClick={() => onDismiss(alert.key)} aria-label="Tutup notifikasi" className="rounded-lg p-1 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"><X size={16} /></button>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

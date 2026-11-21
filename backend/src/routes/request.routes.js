@@ -6,6 +6,7 @@ import { validateRequestPayload } from '../lib/validate.js'
 import { uploadSuratTugas as sendToStorage } from '../lib/storage.js'
 import { uploadSuratTugas as uploadSuratTugasMiddleware } from '../middleware/upload.js'
 import { requireAdmin, requireFeature } from '../middleware/auth.js'
+import { notifyNewRequest, notifyStatusChange } from '../lib/notifications.js'
 
 const router = Router()
 
@@ -96,6 +97,10 @@ router.post(
     }
 
     if (error) throw httpError(502, `Gagal menyimpan permintaan: ${error.message}`)
+
+    // Notifikasi WhatsApp ke admin. Modul ini fail-soft: bila Fonnte belum
+    // dikonfigurasi / gagal, pendaftaran tamu tetap berhasil.
+    await notifyNewRequest({ ...payload, ...data })
 
     res.status(201).json({
       request: data,
@@ -221,6 +226,8 @@ router.post(
       throw httpError(502, `Gagal menyetujui request: ${accError.message}`)
     }
 
+    await notifyStatusChange(record, 'Diterima')
+
     res.json({ request: { ...record, status: 'Diterima' } })
   }),
 )
@@ -246,6 +253,8 @@ router.post(
     if (historyError && historyError.code !== DUPLICATE_KEY) {
       throw httpError(502, `Gagal menyimpan riwayat: ${historyError.message}`)
     }
+
+    await notifyStatusChange(record, 'Ditolak')
 
     res.json({ request: { ...record, status: 'Ditolak' } })
   }),
@@ -283,6 +292,8 @@ router.post(
 
     const { error: removeError } = await supabase.from('req_acc').delete().eq('id', id)
     if (removeError) throw httpError(502, `Gagal menyelesaikan kunjungan: ${removeError.message}`)
+
+    await notifyStatusChange(record, 'Selesai')
 
     res.json({ request: { ...record, status: 'Selesai' } })
   }),

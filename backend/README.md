@@ -19,6 +19,8 @@ Semua operasi penting — login admin, ajukan permintaan, setujui atau tolak —
 7. [Daftar Endpoint API](#7-daftar-endpoint-api)
 8. [Catatan Keamanan](#8-catatan-keamanan)
 9. [Pemecahan Masalah](#9-pemecahan-masalah)
+10. [Notifikasi WhatsApp (Fonnte)](#10-notifikasi-whatsapp-fonnte)
+11. [Notifikasi Browser (Web Push)](#11-notifikasi-browser-web-push)
 
 ---
 
@@ -71,6 +73,10 @@ SUPABASE_URL=https://PROJECT-URL-KAMU.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=TEMPEL-SERVICE-ROLE-KEY
 SUPABASE_ANON_KEY=TEMPEL-ANON-KEY
 CORS_ORIGIN=http://localhost:5173
+
+# Notifikasi WhatsApp (opsional)
+FONNTE_TOKEN=token_fonnte_anda
+WHATSAPP_NOTIFY_NUMBERS=081234567890,081987654321
 ```
 
 Penjelasan tiap baris:
@@ -82,6 +88,15 @@ Penjelasan tiap baris:
 | `SUPABASE_SERVICE_ROLE_KEY` | **Ya** | Kunci akses penuh (dipakai untuk menulis data). **Rahasia.** |
 | `SUPABASE_ANON_KEY` | Opsional | Cadangan jika service role key belum diisi |
 | `CORS_ORIGIN` | Ya | Alamat frontend yang diizinkan mengakses backend (`http://localhost:5173`) |
+| `FONNTE_TOKEN` | Opsional | Token API Fonnte untuk notifikasi WhatsApp. **Rahasia.** Kosongkan untuk mematikan fitur. |
+| `WHATSAPP_NOTIFY_NUMBERS` | Opsional | Nomor admin penerima notifikasi, dipisah koma. Boleh `08xx` / `62xx`. |
+| `FONNTE_COUNTRY_CODE` | Opsional | Kode negara, default `62`. |
+| `FONNTE_API_URL` | Opsional | Endpoint Fonnte, default `https://api.fonnte.com/send`. |
+| `NOTIFY_CHANNELS` | Opsional | Kanal notifikasi: `push` (default), `whatsapp`, atau `push,whatsapp`. |
+| `VAPID_PUBLIC_KEY` | Opsional | Kunci publik Web Push (dibuat dengan `npm run push:keys`). |
+| `VAPID_PRIVATE_KEY` | Opsional | Kunci privat Web Push. **Rahasia**, hanya di backend. |
+| `VAPID_SUBJECT` | Opsional | Kontak admin untuk Web Push, default `mailto:admin@petaskanida.sch.id`. |
+| `PUSH_FRONTEND_URL` | Opsional | URL dashboard yang dibuka saat notifikasi diklik. |
 
 > **Catatan:** masa berlaku token, refresh token, dan enkripsi sesi dikelola langsung oleh **Supabase Auth (schema auth / GoTrue)**, sehingga variabel `AUTH_SECRET` dan `TOKEN_TTL_SECONDS` tidak dipakai lagi.
 >
@@ -216,6 +231,79 @@ curl -X POST http://localhost:3001/api/auth/login \
 | Login: `Akun ini bukan admin terdaftar` | Akun ada di `auth.users`, tetapi profil belum ada di `public.admins` | Jalankan `npm run admin:create -- <email> <password> <nama>` |
 | Frontend tidak bisa konek | `CORS_ORIGIN` salah | Pastikan isinya alamat frontend, misalnya `http://localhost:5173` |
 | Perubahan `.env` tidak terbaca | Server belum direstart | Hentikan (Ctrl+C), lalu jalankan `npm run dev` lagi |
+| Notifikasi WhatsApp tidak sampai | Token/nomor belum diisi atau quota Fonnte habis | Jalankan `npm run wa:test`, lalu cek konsol backend dan dashboard Fonnte |
+
+---
+
+## 10. Notifikasi WhatsApp (Fonnte)
+
+Setiap kali **tamu mengirim form reservasi** dan setiap kali admin mengubah status
+(**Diterima / Ditolak / Selesai**), backend dapat mengirim pesan WhatsApp ke semua
+nomor yang terdaftar di `WHATSAPP_NOTIFY_NUMBERS`.
+
+> Kanal WA **tidak aktif secara default**. Aktifkan dengan menulis
+> `NOTIFY_CHANNELS=whatsapp` (atau `push,whatsapp`) di `.env`. Ini sengaja
+> dinonaktifkan agar nomor WhatsApp sekolah tidak otomatis dipakai otomasi.
+
+**Setup (sekali):**
+
+1. Daftar/login di <https://fonnte.com>, lalu ambil **token** dari dashboard.
+2. Isi di `backend/.env`:
+
+   ```env
+   FONNTE_TOKEN=token_dari_dashboard
+   WHATSAPP_NOTIFY_NUMBERS=081234567890,081987654321
+   ```
+
+3. Restart backend, lalu uji dengan:
+
+   ```bash
+   npm run wa:test
+   ```
+
+4. Jika pesan uji sampai, buka aplikasi dan coba isi form tamu — pesan notifikasi
+   akan langsung masuk ke WhatsApp admin.
+
+**Catatan penting:**
+
+- Token hanya disimpan di **backend**. Jangan taruh di frontend atau commit `.env`.
+- Nomor dipisah koma jika lebih dari satu. Nomor `08xx` otomatis dinormalisasi ke `62xx`.
+- Pengiriman **fail-soft**: jika Fonnte belum dikonfigurasi, sedang down, atau quota habis,
+  form tamu dan perubahan status **tetap berhasil**. Detail kegagalan muncul di konsol backend.
+- Karena backend di-deploy di Vercel (serverless), pengiriman di-`await` sebelum response
+  dikirim dengan batas waktu 7 detik agar pesan tidak terputus saat fungsi di-freeze.
+- Pesan dikirim satu arah (tidak ada auto-reply). Untuk membalas tamu, gunakan tombol
+  WhatsApp yang sudah ada di dashboard admin.
+
+---
+
+## 11. Notifikasi Browser (Web Push)
+
+Alternatif notifikasi tanpa nomor WhatsApp: pesan langsung muncul di browser/laptop
+admin, bahkan saat dashboard sedang tidak dibuka. Tidak ada biaya dan tidak ada
+risiko nomor sekolah terkena pembatasan.
+
+**Setup (sekali):**
+
+1. Jalankan `npm run push:keys`, lalu salin `VAPID_PUBLIC_KEY` dan
+   `VAPID_PRIVATE_KEY` ke `backend/.env`. (Kunci sudah dibuat di environment ini.)
+2. Pastikan `NOTIFY_CHANNELS=push` — ini adalah default, jadi WhatsApp tidak
+   dipakai. Untuk memakai keduanya: `NOTIFY_CHANNELS=push,whatsapp`.
+3. Jalankan `database/migrations/20261121000000_create_push_subscriptions.sql`
+   di **Supabase SQL Editor**, lalu restart backend.
+4. Di browser admin (harus **HTTPS** atau `localhost`), klik ikon **lonceng**
+   di header dashboard dan izinkan notifikasi.
+
+**Catatan:**
+
+- Tabel `push_subscriptions` hanya menyimpan endpoint perangkat + kunci enkripsi
+  (satu baris per perangkat). **Isi pesan tidak disimpan di database**, jadi
+  notifikasi tidak menambah storage.
+- Jika migration belum dijalankan, backend tetap berjalan; cukup ada peringatan
+  di konsol bahwa subscription belum bisa disimpan.
+- Backend otomatis menghapus subscription yang sudah kedaluwarsa (HTTP 410/404).
+- Frontend juga punya notifikasi in-app + polling 15 detik sebagai cadangan bila
+  Realtime Supabase tidak aktif atau izin push ditolak.
 
 ---
 
