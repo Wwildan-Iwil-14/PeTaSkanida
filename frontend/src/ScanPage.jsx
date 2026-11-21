@@ -6,6 +6,7 @@ import {
   RefreshCw, Zap, Volume2, VolumeX, ArrowRight,
 } from 'lucide-react'
 import { api } from './lib/api'
+import { useTablePaging, TablePaging } from './lib/pagination'
 
 const CARD = 'rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
 const READER_ID = 'peta-qr-reader'
@@ -605,6 +606,7 @@ export function ScanPage({ scans = [], onScanned, onCompleteVisit }) {
   const [manual, setManual] = useState('')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const deviceId = useRef(getDeviceId()).current
+  const paging = useTablePaging(scans, { defaultSize: 10, resetKey: 'scans' })
 
   const submit = useCallback(async kode => {
     const value = String(kode || '').trim()
@@ -698,12 +700,17 @@ export function ScanPage({ scans = [], onScanned, onCompleteVisit }) {
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">Scan terbaru</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Diperbarui otomatis saat ada tamu yang discan</p>
           </div>
-          <span className="shrink-0 flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> Live
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => onScanned?.()} title="Muat ulang scan" aria-label="Muat ulang scan" className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+              <RefreshCw size={15} />
+            </button>
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> Live
+            </span>
+          </div>
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {scans.length ? scans.map(scan => {
+          {paging.pageItems.length ? paging.pageItems.map(scan => {
             const meta = HASIL[scan.hasil] || HASIL.tidak_ditemukan
             return (
               <div key={scan.id} className="p-3.5 sm:p-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
@@ -742,6 +749,7 @@ export function ScanPage({ scans = [], onScanned, onCompleteVisit }) {
             <p className="px-5 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada tamu yang discan.</p>
           )}
         </div>
+        <TablePaging paging={paging} />
       </div>
     </div>
   )

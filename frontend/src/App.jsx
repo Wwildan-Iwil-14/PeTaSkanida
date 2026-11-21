@@ -6,6 +6,7 @@ import { enablePush, disablePush, getPushStatus } from './lib/push'
 import { drawBarcode, downloadBarcode, BARCODE_CANVAS_ID } from './lib/barcode'
 import { drawQr, QR_CANVAS_ID } from './lib/qr'
 import { ScanPage, ScanAlerts, getDeviceId, notifySound } from './ScanPage'
+import { useTablePaging, TablePaging } from './lib/pagination'
 import {
   ROLES, ROLE_LABELS, FEATURES, ROLE_DEFAULTS, resolveFeatures, featureLabel,
 } from './lib/features'
@@ -1088,99 +1089,6 @@ function Panel({ title, subtitle, action, children }) {
   )
 }
 
-// ---- Pagination tabel ----
-
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 0] // 0 = tampilkan semua
-
-function pageNumbers(current, total) {
-  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1)
-  const pages = new Set([1, total, current - 1, current, current + 1])
-  const sorted = [...pages].filter(page => page >= 1 && page <= total).sort((a, b) => a - b)
-  const result = []
-  sorted.forEach((page, index) => {
-    if (index > 0 && page - sorted[index - 1] > 1) result.push(`gap-${page}`)
-    result.push(page)
-  })
-  return result
-}
-
-function useTablePaging(items, { defaultSize = 10, resetKey = '', highlightId = '' } = {}) {
-  const [perPage, setPerPage] = useState(defaultSize)
-  const [page, setPage] = useState(1)
-  const total = items.length
-  const totalPages = perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : 1
-
-  useEffect(() => {
-    setPage(1)
-  }, [resetKey, perPage])
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages)
-  }, [page, totalPages])
-
-  // Bila notifikasi menyorot baris yang ada di halaman lain, buka halamannya.
-  useEffect(() => {
-    if (!highlightId || perPage <= 0) return
-    const index = items.findIndex(item => item.id === highlightId)
-    if (index >= 0) setPage(Math.floor(index / perPage) + 1)
-  }, [highlightId, perPage])
-
-  const pageItems = perPage > 0 ? items.slice((page - 1) * perPage, page * perPage) : items
-  return { page, setPage, perPage, setPerPage, total, totalPages, pageItems }
-}
-
-function TablePaging({ paging }) {
-  const { page, setPage, perPage, setPerPage, total, totalPages } = paging
-  if (!total) return null
-  const start = perPage > 0 ? (page - 1) * perPage + 1 : 1
-  const end = perPage > 0 ? Math.min(page * perPage, total) : total
-  return (
-    <div className="no-print flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:px-6">
-      <p>
-        Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{start}–{end}</span> dari{' '}
-        <span className="font-semibold text-slate-700 dark:text-slate-200">{total}</span> data
-      </p>
-      <label className="flex items-center gap-2">
-        Tampilkan
-        <select
-          value={perPage}
-          onChange={event => setPerPage(Number(event.target.value))}
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-        >
-          {PAGE_SIZE_OPTIONS.map(size => (
-            <option key={size} value={size}>{size === 0 ? 'Semua' : size}</option>
-          ))}
-        </select>
-      </label>
-      {perPage > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="hidden font-semibold sm:inline">Halaman {page} dari {totalPages}</span>
-          <div className="flex items-center gap-1">
-            <button type="button" onClick={() => setPage(1)} disabled={page === 1} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman pertama">«</button>
-            <button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800">
-              <span aria-hidden="true">‹</span> Sebelumnya
-            </button>
-            {pageNumbers(page, totalPages).map(item => typeof item === 'number' ? (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setPage(item)}
-                className={`min-w-[32px] rounded-lg px-2 py-1.5 font-semibold transition ${item === page ? 'bg-indigo-500 text-white' : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'}`}
-              >
-                {item}
-              </button>
-            ) : <span key={item} className="px-1 text-slate-400">…</span>)}
-            <button type="button" onClick={() => setPage(current => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800">
-              Selanjutnya <span aria-hidden="true">›</span>
-            </button>
-            <button type="button" onClick={() => setPage(totalPages)} disabled={page === totalPages} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman terakhir">»</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ---- Form & konfirmasi untuk fitur CRUD admin ----
 
 const RECORD_FIELDS = [
@@ -2121,8 +2029,8 @@ function DatabasePage({ onNotice }) {
   const [days, setDays] = useState('30')
   const [busy, setBusy] = useState(false)
 
-  async function loadStats() {
-    setLoading(true)
+  async function loadStats({ silent = false } = {}) {
+    if (!silent) setLoading(true)
     setError('')
     try {
       const { stats: result } = await api.databaseStats()
@@ -2130,12 +2038,23 @@ function DatabasePage({ onNotice }) {
     } catch (err) {
       setError(err.message || 'Gagal memuat statistik database.')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadStats()
+    const refresh = () => {
+      if (document.visibilityState === 'visible') loadStats({ silent: true })
+    }
+    const timer = window.setInterval(refresh, 30000)
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
+    }
   }, [])
 
   async function handleBackup() {
