@@ -103,12 +103,25 @@ const navItems = [
   { id: 'akun', label: 'Akun Saya', icon: UserCog, feature: 'akun' },
 ]
 
-const formatDate = (value) => {
+// Satu formatter dipakai ulang untuk semua baris agar tidak membuat objek
+// Intl baru tiap render (penting saat tabel berisi ratusan data).
+const DATE_FORMATTER = new Intl.DateTimeFormat('id-ID', {
+  day: '2-digit', month: 'short', year: 'numeric',
+})
+const formatDate = value => {
   if (!value) return '-'
-  return new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', {
-    day: '2-digit', month: 'short', year: 'numeric'
-  })
+  const parsed = new Date(`${value}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? String(value) : DATE_FORMATTER.format(parsed)
 }
+
+// Tanda tangan ringan untuk mendeteksi data yang benar-benar berubah.
+// Dipakai agar polling/realtime tidak memicu render ulang tabel tanpa perlu.
+const requestSignature = rows => (rows || [])
+  .map(row => [
+    row.id, row.status, row.nama, row.tanggal, row.waktu,
+    row.jumlah, row.dihubungi, row.surat_tugas_url,
+  ].join(':'))
+  .join('|')
 
 // Tanggal hari ini dalam format YYYY-MM-DD (pakai zona waktu lokal,
 // bukan toISOString yang memakai UTC dan bisa bergeser sehari).
@@ -1307,24 +1320,24 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId, canMana
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60">
               <tr>
-                <th className="px-6 py-4 font-semibold">Nama</th>
-                <th className="px-6 py-4 font-semibold">Email</th>
-                <th className="px-6 py-4 font-semibold">Role</th>
-                <th className="px-6 py-4 font-semibold">Fitur</th>
-                <th className="px-6 py-4 font-semibold">Dibuat</th>
-                {canManage && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Nama</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Email</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Role</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Fitur</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Dibuat</th>
+                {canManage && <th className="px-3 py-3 sm:px-6 sm:py-4 text-right font-semibold">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {users.map(user => (
                 <tr key={user.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <div className="font-semibold text-slate-800 dark:text-slate-200">{user.nama || '-'}</div>
                     {user.user_id === currentUserId && <span className="mt-1 inline-block text-[10px] font-semibold text-indigo-500">Akun Anda</span>}
                   </td>
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.email || '-'}</td>
-                  <td className="px-6 py-4"><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ROLE_LABELS[user.role] || user.role || 'Admin'}</span></td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 text-slate-600 dark:text-slate-300">{user.email || '-'}</td>
+                  <td className="px-3 py-3 sm:px-6 sm:py-4"><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ROLE_LABELS[user.role] || user.role || 'Admin'}</span></td>
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <div className="flex max-w-[260px] flex-wrap gap-1">
                       {(user.features === null || user.features === undefined
                         ? resolveFeatures(user.role, null)
@@ -1337,9 +1350,9 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId, canMana
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">{user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs text-slate-400 dark:text-slate-500">{user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
                   {canManage && (
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <div className="flex justify-end gap-2">
                         <button type="button" onClick={() => setEditing(user)} title="Edit pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"><Pencil size={13} /> Edit</button>
                         <button type="button" onClick={() => setDeleting(user)} title="Hapus pengguna" className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"><Trash2 size={13} /> Hapus</button>
@@ -1382,7 +1395,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId, canMana
   </>
 }
 
-function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus, onToggleContacted, onComplete, showCrud = false, onEdit, onDelete }) {
+function RequestTable({ items, showActions = false, showContact = false, onUpdateStatus, onToggleContacted, onComplete, showCrud = false, onEdit, onDelete, highlightId = '' }) {
   if (!items.length) {
     return <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data yang cocok.</div>
   }
@@ -1390,29 +1403,33 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
   const waLink = phone => `https://wa.me/${phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}`
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1140px] text-left text-sm">
+      <table className="w-full min-w-[680px] text-left text-sm sm:min-w-[900px] lg:min-w-[1140px]">
         <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-400 dark:bg-slate-800/60 dark:text-slate-400">
           <tr>
-            <th className="px-6 py-4 font-semibold">Pengunjung</th>
-            <th className="px-6 py-4 font-semibold">Email</th>
-            <th className="px-6 py-4 font-semibold">Tujuan</th>
-            <th className="px-6 py-4 font-semibold">Keperluan</th>
-            <th className="px-6 py-4 font-semibold">Surat Tugas</th>
-            <th className="px-6 py-4 font-semibold">Jadwal</th>
-            <th className="px-6 py-4 font-semibold">Jumlah</th>
-            <th className="px-6 py-4 font-semibold">Status</th>
-            {hasActions && <th className="px-6 py-4 text-right font-semibold">Aksi</th>}
-            {showContact && <th className="px-6 py-4 font-semibold">Kontak</th>}
+            <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Pengunjung</th>
+            <th className="hidden px-3 py-3 sm:px-6 sm:py-4 font-semibold md:table-cell">Email</th>
+            <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Tujuan</th>
+            <th className="hidden px-3 py-3 sm:px-6 sm:py-4 font-semibold lg:table-cell">Keperluan</th>
+            <th className="hidden px-3 py-3 sm:px-6 sm:py-4 font-semibold xl:table-cell">Surat Tugas</th>
+            <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Jadwal</th>
+            <th className="hidden px-3 py-3 sm:px-6 sm:py-4 font-semibold sm:table-cell">Jumlah</th>
+            <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Status</th>
+            {hasActions && <th className="px-3 py-3 sm:px-6 sm:py-4 text-right font-semibold">Aksi</th>}
+            {showContact && <th className="px-3 py-3 sm:px-6 sm:py-4 font-semibold">Kontak</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
           {items.map(item => (
-            <tr key={item.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-              <td className="px-6 py-4">
+            <tr
+              id={`request-row-${item.id}`}
+              key={item.id}
+              className={`transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${highlightId === item.id ? 'row-highlight' : ''}`}
+            >
+              <td className="px-3 py-3 sm:px-6 sm:py-4">
                 <div className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</div>
                 <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.id} · {item.phone}</div>
               </td>
-              <td className="px-6 py-4">
+              <td className="hidden px-3 py-3 sm:px-6 sm:py-4 md:table-cell">
                 {item.email ? (
                   <a
                     href={`mailto:${item.email}`}
@@ -1424,22 +1441,22 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
                   </a>
                 ) : <span className="text-slate-400 dark:text-slate-500">-</span>}
               </td>
-              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.tujuan}</td>
-              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.keperluan}</td>
-              <td className="px-6 py-4">
+              <td className="px-3 py-3 sm:px-6 sm:py-4 text-slate-600 dark:text-slate-300">{item.tujuan}</td>
+              <td className="hidden px-3 py-3 sm:px-6 sm:py-4 text-slate-600 dark:text-slate-300 lg:table-cell">{item.keperluan}</td>
+              <td className="hidden px-3 py-3 sm:px-6 sm:py-4 xl:table-cell">
                 {item.suratTugasUrl ? (
                   <a href={item.suratTugasUrl} target="_blank" rel="noreferrer" title={item.suratTugasNama || 'Buka surat tugas'} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20">
                     <FileText size={13} /> Lihat
                   </a>
                 ) : <span className="text-xs text-slate-400 dark:text-slate-500">-</span>}
               </td>
-              <td className="px-6 py-4">
+              <td className="px-3 py-3 sm:px-6 sm:py-4">
                 <div className="font-medium text-slate-700 dark:text-slate-300">{formatDate(item.date)}</div>
                 <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.time ? `${item.time} WIB` : '-'}</div>
               </td>
-              <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{item.people} orang</td>
-              <td className="px-6 py-4"><Status value={item.status} /></td>
-              {hasActions && <td className="px-6 py-4">
+              <td className="hidden px-3 py-3 sm:px-6 sm:py-4 text-slate-600 dark:text-slate-300 sm:table-cell">{item.people} orang</td>
+              <td className="px-3 py-3 sm:px-6 sm:py-4"><Status value={item.status} /></td>
+              {hasActions && <td className="px-3 py-3 sm:px-6 sm:py-4">
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {item.status === 'Pending' && showActions && (
                     <>
@@ -1472,7 +1489,7 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
                   )}
                 </div>
               </td>}
-              {showContact && <td className="px-6 py-4">
+              {showContact && <td className="px-3 py-3 sm:px-6 sm:py-4">
                 <div className="flex flex-col items-start gap-2">
                   <ContactBadge contacted={item.contacted} />
                   {item.contacted && item.contactedAt && (
@@ -1510,14 +1527,32 @@ function RequestTable({ items, showActions = false, showContact = false, onUpdat
 }
 
 function SearchFilter({ query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, showContactFilter = false, statusOptions = ['Semua', 'Pending', 'Diterima', 'Ditolak'], sortOrder, onSortOrderChange }) {
+  // Ketikan di-debounce supaya tabel besar tidak difilter ulang tiap karakter.
+  const [text, setText] = useState(query)
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    window.clearTimeout(timerRef.current)
+    setText(query)
+  }, [query])
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), [])
+
+  function handleSearch(event) {
+    const value = event.target.value
+    setText(value)
+    window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => onQueryChange(value), 150)
+  }
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="relative flex-1">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
         <input
           type="search"
-          value={query}
-          onChange={e => onQueryChange(e.target.value)}
+          value={text}
+          onChange={handleSearch}
           placeholder="Cari nama atau ID request..."
           aria-label="Cari nama atau ID request"
           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
@@ -1600,7 +1635,7 @@ function Dashboard({ requests, adminName, onGoTo }) {
   </>
 }
 
-function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange, onCreate, onUpdate, onDelete }) {
+function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange, onCreate, onUpdate, onDelete, highlightId = '' }) {
   const isPending = type === 'request'
   const [tamuView, setTamuView] = useState('semua')
   const [editing, setEditing] = useState(null)
@@ -1705,6 +1740,7 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
         showCrud={!isPending && canCrud}
         onEdit={canCrud ? item => setEditing(item) : undefined}
         onDelete={canCrud ? item => setDeleting(item) : undefined}
+        highlightId={highlightId}
       />
     </Panel>
 
@@ -1745,7 +1781,7 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
   </>
 }
 
-function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete, canPrint = false, canEdit = true, onNotice = () => {} }) {
+function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, filter, onFilterChange, onCreate, onUpdate, onDelete, canPrint = false, canEdit = true, onNotice = () => {}, highlightId = '' }) {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [exportOpen, setExportOpen] = useState(false)
@@ -1831,6 +1867,7 @@ function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, f
         showCrud={canEdit}
         onEdit={canEdit ? item => setEditing(item) : undefined}
         onDelete={canEdit ? item => setDeleting(item) : undefined}
+        highlightId={highlightId}
       />
     </Panel>
 
@@ -1930,7 +1967,7 @@ function AccountPage({ admin, features }) {
       <Panel title="Profil akun" subtitle="Data diambil dari sesi login aktif.">
         <dl className="divide-y divide-slate-100 dark:divide-slate-800">
           {rows.map(row => (
-            <div key={row.label} className="flex items-center justify-between gap-4 px-6 py-4">
+            <div key={row.label} className="flex items-center justify-between gap-4 px-3 py-3 sm:px-6 sm:py-4">
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{row.label}</dt>
               <dd className="text-sm font-semibold text-slate-700 dark:text-slate-200">{row.value}</dd>
             </div>
@@ -2107,7 +2144,10 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   const [notifyAlerts, setNotifyAlerts] = useState([])
   const [pushStatus, setPushStatus] = useState({ supported: false, permission: 'unsupported', subscribed: false })
   const [pushBusy, setPushBusy] = useState(false)
+  const [highlightId, setHighlightId] = useState('')
   const knownRequestsRef = useRef(null)
+  const requestsSignatureRef = useRef(null)
+  const highlightTimerRef = useRef(null)
 
   function showNotice(message, duration = 3200) {
     setNotice(message)
@@ -2137,6 +2177,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
             title: 'Permintaan kunjungan baru',
             body: label,
             status: 'Pending',
+            requestId: code,
           })
         } else if (previous.get(row.id) !== row.status) {
           alerts.push({
@@ -2144,6 +2185,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
             title: titles[row.status] || 'Status kunjungan berubah',
             body: label,
             status: row.status,
+            requestId: code,
           })
         }
       }
@@ -2160,6 +2202,27 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   function dismissNotifyAlert(key) {
     setNotifyAlerts(current => current.filter(item => item.key !== key))
   }
+
+  // Sorot baris yang dituju dari notifikasi, lalu gulir ke baris tersebut.
+  function showHighlight(requestId) {
+    if (!requestId) return
+    window.clearTimeout(highlightTimerRef.current)
+    setHighlightId(requestId)
+    highlightTimerRef.current = window.setTimeout(() => setHighlightId(''), 6000)
+  }
+
+  useEffect(() => () => window.clearTimeout(highlightTimerRef.current), [])
+
+  useEffect(() => {
+    if (!highlightId) return undefined
+    const timer = window.setTimeout(() => {
+      document.getElementById(`request-row-${highlightId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 150)
+    return () => window.clearTimeout(timer)
+  }, [highlightId, active])
 
   async function togglePush() {
     setPushBusy(true)
@@ -2188,7 +2251,13 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     try {
       const { requests: rows } = await api.listRequests()
       const list = rows || []
-      setRequests(list.map(row => mapRecord(row, row.status)))
+      const signature = requestSignature(list)
+      // Realtime + polling bisa mengirim data yang sama berulang kali.
+      // Lewati setState bila tidak ada perubahan agar tabel tidak render ulang.
+      if (requestsSignatureRef.current === null || signature !== requestsSignatureRef.current) {
+        requestsSignatureRef.current = signature
+        setRequests(list.map(row => mapRecord(row, row.status)))
+      }
       if (announce) announceChanges(list)
       else if (knownRequestsRef.current === null) announceChanges(list)
       loadedOnceRef.current = true
@@ -2205,7 +2274,12 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     try {
       const { scans: rows } = await api.listScans(30)
       const list = rows || []
-      setScans(list)
+      setScans(current => (
+        current.length === list.length &&
+        current.every((row, index) => row.id === list[index].id && row.hasil === list[index].hasil)
+          ? current
+          : list
+      ))
 
       const maxId = list.reduce((max, row) => Math.max(max, Number(row.id) || 0), 0)
       const previous = lastScanIdRef.current
@@ -2505,6 +2579,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                   title="Kelola Tamu (superadmin)"
                   subtitle="Daftar tamu yang telah disetujui atau ditolak dengan aksi edit dan hapus. Klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan."
                   canCrud={true}
+                  highlightId={highlightId}
                   visibleRequests={visibleRequests}
                   query={query}
                   onQueryChange={setQuery}
@@ -2526,6 +2601,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                   title="Kelola Tamu (admin)"
                   subtitle="Daftar tamu yang telah disetujui atau ditolak khusus admin (tanpa aksi edit dan hapus)."
                   canCrud={false}
+                  highlightId={highlightId}
                   visibleRequests={visibleRequests}
                   query={query}
                   onQueryChange={setQuery}
@@ -2541,6 +2617,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
               {active === 'request' && features.includes('request') && (
                 <ListingPage
                   type="request"
+                  highlightId={highlightId}
                   visibleRequests={visibleRequests}
                   query={query}
                   onQueryChange={setQuery}
@@ -2558,6 +2635,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                 <HistoryPage
                   title="Riwayat Kunjungan (superadmin)"
                   subtitle="Arsip kunjungan yang sudah ditandai selesai beserta permintaan yang ditolak, dengan aksi edit dan hapus."
+                  highlightId={highlightId}
                   visibleRequests={visibleRequests}
                   query={query}
                   onQueryChange={setQuery}
@@ -2575,6 +2653,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                 <HistoryPage
                   title="Riwayat Kunjungan (admin)"
                   subtitle="Arsip kunjungan yang sudah ditandai selesai beserta permintaan yang ditolak, khusus admin (tanpa aksi edit dan hapus)."
+                  highlightId={highlightId}
                   visibleRequests={visibleRequests}
                   query={query}
                   onQueryChange={setQuery}
@@ -2602,7 +2681,13 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
           onDismiss={dismissNotifyAlert}
           onOpen={alert => {
             dismissNotifyAlert(alert.key)
-            goTo(alert.status === 'Selesai' || alert.status === 'Ditolak' ? 'riwayat' : 'request')
+            showHighlight(alert.requestId)
+            const target = alert.status === 'Diterima'
+              ? 'tamu'
+              : (alert.status === 'Selesai' || alert.status === 'Ditolak')
+                ? 'riwayat'
+                : 'request'
+            goTo(target)
           }}
         />
         <ScanAlerts alerts={scanAlerts} onDismiss={dismissScanAlert} onOpen={scan => { dismissScanAlert(scan.id); goTo('scan') }} />

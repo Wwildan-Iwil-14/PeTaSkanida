@@ -80,6 +80,16 @@ html.theme-transition *::after {
 /* Cetak riwayat kunjungan: sembunyikan navigasi & tombol aksi. */
 .print-only { display: none; }
 
+/* Baris yang dituju dari notifikasi "Lihat data". */
+@keyframes rowHighlight {
+  0%, 60% { background-color: rgba(99, 102, 241, 0.22); }
+  100% { background-color: rgba(99, 102, 241, 0); }
+}
+.row-highlight {
+  animation: rowHighlight 2.5s ease-out 1;
+  box-shadow: inset 3px 0 0 #6366f1;
+}
+
 @media print {
   @page { size: A4 landscape; margin: 12mm; }
   html, body { background: #fff !important; color: #000 !important; }
@@ -88,7 +98,8 @@ html.theme-transition *::after {
   .print-only { display: block !important; }
   .max-w-\[1600px\] { max-width: none !important; }
   table { width: 100% !important; min-width: 0 !important; font-size: 10px; }
-  th, td { padding: 6px 8px !important; }
+  th, td { padding: 6px 8px !important; display: table-cell !important; }
   tr { break-inside: avoid; }
+  .row-highlight { animation: none; box-shadow: none; }
 }
 
