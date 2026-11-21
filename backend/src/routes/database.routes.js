@@ -113,8 +113,10 @@ router.get(
 
 function csvCell(value) {
   if (value === null || value === undefined) return ''
-  if (Array.isArray(value)) return `"${value.join(', ').replace(/"/g, '""')}"`
-  return `"${String(value).replace(/"/g, '""')}"`
+  const raw = Array.isArray(value) ? value.join(', ') : String(value)
+  // Cegah CSV/Excel formula injection saat file dibuka di spreadsheet.
+  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
+  return `"${safe.replace(/"/g, '""')}"`
 }
 
 /**
@@ -200,6 +202,10 @@ function normalizeRow(table, raw) {
       row[column] = Number.isFinite(parsed) ? parsed : 1
     } else if (column === 'dihubungi') {
       row[column] = value === true || value === 'true' || value === 1 || value === '1'
+    } else if (column === 'surat_tugas_url') {
+      // Hanya terima tautan http(s); cegah javascript: dari file impor.
+      const url = String(value).trim()
+      row[column] = /^https?:\/\//i.test(url) ? url : null
     } else if (typeof value === 'string') {
       row[column] = value.trim()
     } else {

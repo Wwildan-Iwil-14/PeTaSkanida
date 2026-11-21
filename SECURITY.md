@@ -19,6 +19,11 @@ pengamanan harus diaktifkan lewat konfigurasi layanan.
 | Header keamanan tidak ada | Backend & Vercel mengirim `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`. Respons API `no-store`. |
 | Notifikasi bocor ke akun tanpa menu terkait | Filter notifikasi berdasarkan fitur akun (in-app + Web Push). |
 | Refresh token gagal saat banyak request paralel → logout | Refresh dedup + refresh lebih awal + gangguan jaringan tidak menghapus sesi. |
+| Request tamu bisa di-spam | Rate limit 12 request/menit per IP untuk `POST /api/requests`. |
+| Input bebas panjangnya | Batas panjang nama/email/HP/tujuan/keperluan & jumlah pengunjung. |
+| Impor database bisa menyisipkan `javascript:` URL | `surat_tugas_url` hanya menerima `http(s)`. |
+| CSV formula injection saat dibuka di Excel | Nilai diawali `= + - @` diberi awalan `'` saat ekspor. |
+| Anon key ikut terpasang di Vercel | Env `SUPABASE_ANON_KEY` dihapus dari Vercel; backend memakai service role. |
 
 ---
 

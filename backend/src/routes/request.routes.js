@@ -8,9 +8,14 @@ import { uploadSuratTugas as uploadSuratTugasMiddleware } from '../middleware/up
 import { requireAdmin, requireFeature } from '../middleware/auth.js'
 import { notifyNewRequest, notifyStatusChange } from '../lib/push.js'
 
+import { createRateLimiter } from '../middleware/rateLimit.js'
+
 const router = Router()
 
 const DUPLICATE_KEY = '23505'
+
+// Batasi pembuatan request publik agar tidak bisa dipakai untuk spam/DoS.
+const guestRequestLimiter = createRateLimiter({ windowMs: 60_000, max: 12 })
 
 const parseId = value => {
   const id = Number.parseInt(value, 10)
@@ -52,6 +57,7 @@ const toRecord = row => ({
  */
 router.post(
   '/',
+  guestRequestLimiter,
   uploadSuratTugasMiddleware,
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateRequestPayload(req.body)

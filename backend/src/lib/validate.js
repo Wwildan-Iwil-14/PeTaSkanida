@@ -7,6 +7,14 @@ const TIME_PATTERN = /^\d{2}:\d{2}$/
 
 const text = value => (typeof value === 'string' ? value.trim() : '')
 
+const LIMITS = {
+  nama: 120,
+  email: 254,
+  no_hp: 30,
+  tujuan: 200,
+  keperluan: 1000,
+}
+
 /**
  * Validasi & normalisasi payload permintaan kunjungan dari tamu.
  * Mengembalikan { payload, errors } - errors berisi daftar pesan kesalahan.
@@ -26,19 +34,27 @@ export function validateRequestPayload(body = {}) {
   }
 
   if (!payload.nama) errors.push('Nama / instansi wajib diisi.')
+  else if (payload.nama.length > LIMITS.nama) errors.push('Nama / instansi terlalu panjang.')
   // Email bersifat opsional untuk tamu; bila diisi tetap harus valid.
-  if (payload.email && !EMAIL_PATTERN.test(payload.email)) {
-    errors.push('Format alamat email tidak valid.')
+  if (payload.email) {
+    if (!EMAIL_PATTERN.test(payload.email)) errors.push('Format alamat email tidak valid.')
+    else if (payload.email.length > LIMITS.email) errors.push('Alamat email terlalu panjang.')
   }
   if (!PHONE_PATTERN.test(payload.no_hp)) errors.push('Nomor HP tidak valid.')
+  else if (payload.no_hp.length > LIMITS.no_hp) errors.push('Nomor HP terlalu panjang.')
   if (!payload.tujuan) errors.push('Tujuan wajib diisi.')
+  else if (payload.tujuan.length > LIMITS.tujuan) errors.push('Tujuan terlalu panjang.')
   if (!payload.keperluan) errors.push('Keperluan wajib diisi.')
+  else if (payload.keperluan.length > LIMITS.keperluan) errors.push('Keperluan terlalu panjang.')
   if (!DATE_PATTERN.test(payload.tanggal)) errors.push('Tanggal kunjungan tidak valid.')
   if (payload.waktu && !TIME_PATTERN.test(payload.waktu)) errors.push('Waktu kunjungan tidak valid.')
 
   if (!Number.isFinite(payload.jumlah) || payload.jumlah < 1) {
     errors.push('Jumlah pengunjung minimal 1.')
     payload.jumlah = 1
+  } else if (payload.jumlah > 1000) {
+    errors.push('Jumlah pengunjung terlalu besar.')
+    payload.jumlah = 1000
   }
 
   return { payload, errors }
@@ -60,7 +76,9 @@ export function validateAdminPayload(body = {}, { isCreate = false } = {}) {
   }
 
   if (!payload.nama) errors.push('Nama petugas wajib diisi.')
+  else if (payload.nama.length > LIMITS.nama) errors.push('Nama petugas terlalu panjang.')
   if (!EMAIL_PATTERN.test(payload.email)) errors.push('Format alamat email tidak valid.')
+  else if (payload.email.length > LIMITS.email) errors.push('Alamat email terlalu panjang.')
   if (!ROLES.includes(payload.role)) {
     errors.push('Role harus petugas, admin, atau super_admin.')
   }
