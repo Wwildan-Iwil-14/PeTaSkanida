@@ -35,7 +35,7 @@ router.post(
       throw httpError(401, 'Email atau password salah.')
     }
 
-    const profile = await getAdminProfile(data.user.id, data.user.email)
+    const profile = await getAdminProfile(data.user.id, data.user.email, Boolean(data.user.email_confirmed_at))
     if (!profile) {
       // Cabut sesi Supabase Auth yang baru saja dibuat agar user tidak meninggalkan sesi aktif
       await supabase.auth.admin.signOut(data.session.access_token, 'global').catch(() => {})

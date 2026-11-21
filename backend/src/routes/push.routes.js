@@ -26,7 +26,14 @@ router.post(
     const p256dh = subscription?.keys?.p256dh
     const auth = subscription?.keys?.auth
 
-    if (typeof endpoint !== 'string' || !endpoint.startsWith('https://') || !p256dh || !auth) {
+    if (
+      typeof endpoint !== 'string' ||
+      endpoint.length > 2048 ||
+      !endpoint.startsWith('https://') ||
+      typeof p256dh !== 'string' || p256dh.length > 512 ||
+      typeof auth !== 'string' || auth.length > 256 ||
+      !p256dh || !auth
+    ) {
       throw httpError(422, 'Data subscription browser tidak valid.')
     }
 

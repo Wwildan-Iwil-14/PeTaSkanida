@@ -30,8 +30,8 @@ if (!EMAIL_PATTERN.test(email)) {
   console.error(`Email tidak valid: ${email}`)
   process.exit(1)
 }
-if (password.length < 6) {
-  console.error('Password minimal 6 karakter (aturan bawaan Supabase Auth).')
+if (password.length < 8) {
+  console.error('Password minimal 8 karakter.')
   process.exit(1)
 }
 if (!ROLES.includes(roleArg)) {

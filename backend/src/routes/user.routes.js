@@ -155,6 +155,18 @@ router.patch(
       throw httpError(400, 'Anda tidak dapat menurunkan role akun yang sedang digunakan.')
     }
 
+    // Jangan sampai super admin terakhir diturunkan rolenya.
+    if (current.role === 'super_admin' && payload.role !== 'super_admin') {
+      const { count, error: countError } = await supabase
+        .from('admins')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'super_admin')
+      if (countError) throw httpError(502, `Gagal memeriksa jumlah super admin: ${countError.message}`)
+      if ((count || 0) <= 1) {
+        throw httpError(400, 'Minimal satu akun super admin harus tetap ada.')
+      }
+    }
+
     if (current.user_id && (payload.email !== current.email || payload.password)) {
       const attributes = {}
       if (payload.email !== current.email) attributes.email = payload.email
@@ -205,6 +217,17 @@ router.delete(
 
     if (profile.user_id && profile.user_id === req.admin.userId) {
       throw httpError(400, 'Tidak dapat menghapus akun yang sedang digunakan sendiri.')
+    }
+
+    if (profile.role === 'super_admin') {
+      const { count, error: countError } = await supabase
+        .from('admins')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'super_admin')
+      if (countError) throw httpError(502, `Gagal memeriksa jumlah super admin: ${countError.message}`)
+      if ((count || 0) <= 1) {
+        throw httpError(400, 'Minimal satu akun super admin harus tetap ada.')
+      }
     }
 
     if (profile.user_id) {

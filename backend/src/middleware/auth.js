@@ -26,7 +26,7 @@ export async function requireAdmin(req, res, next) {
     const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return next(httpError(401, SESSAI_INVALID))
 
-    const profile = await getAdminProfile(data.user.id, data.user.email)
+    const profile = await getAdminProfile(data.user.id, data.user.email, Boolean(data.user.email_confirmed_at))
     if (!profile) {
       return next(httpError(403, 'Akun ini bukan admin terdaftar. Hubungi pengelola sistem.'))
     }

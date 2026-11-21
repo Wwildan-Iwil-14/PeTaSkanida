@@ -67,11 +67,11 @@ export function validateAdminPayload(body = {}, { isCreate = false } = {}) {
   if (payload.features !== null && !isValidFeatureList(payload.features)) {
     errors.push('Ada fitur akun yang tidak dikenal.')
   }
-  if (isCreate && payload.password.length < 6) {
-    errors.push('Password minimal 6 karakter.')
+  if (isCreate && payload.password.length < 8) {
+    errors.push('Password minimal 8 karakter.')
   }
-  if (!isCreate && payload.password && payload.password.length < 6) {
-    errors.push('Password minimal 6 karakter.')
+  if (!isCreate && payload.password && payload.password.length < 8) {
+    errors.push('Password minimal 8 karakter.')
   }
 
   return { payload, errors }

@@ -18,6 +18,25 @@ const toList = value =>
 
 const nodeEnv = process.env.NODE_ENV || 'development'
 
+const PRODUCTION_ORIGIN = 'https://petaskanida.vercel.app'
+const LOCAL_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i
+
+function resolveCorsOrigins(environment) {
+  const origins = [
+    ...new Set([...toList(process.env.CORS_ORIGIN || 'http://localhost:5173'), PRODUCTION_ORIGIN]),
+  ]
+  // Wildcard & localhost tidak boleh lolos ke produksi.
+  if (environment === 'production') {
+    return origins.filter(
+      origin =>
+        origin !== '*' &&
+        !LOCAL_ORIGIN_PATTERN.test(origin) &&
+        origin.startsWith('https://'),
+    )
+  }
+  return origins
+}
+
 export const config = {
   port: Number(process.env.PORT || 3001),
   supabaseUrl: process.env.SUPABASE_URL || '',
@@ -32,12 +51,7 @@ export const config = {
   // Origin produksi Vercel selalu diizinkan walaupun CORS_ORIGIN di dashboard
   // masih berisi nilai development, supaya /api bisa dipanggil dari frontend
   // yang di-host di domain yang sama.
-  corsOrigins: [
-    ...new Set([
-      ...toList(process.env.CORS_ORIGIN || 'http://localhost:5173'),
-      'https://petaskanida.vercel.app',
-    ]),
-  ],
+  corsOrigins: resolveCorsOrigins(nodeEnv),
   nodeEnv,
 
   // Email tujuan dokumen surat tugas. Sementara memakai gmail pribadi;

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, saveSession, clearSession, loadToken } from './lib/api'
-import { subscribeToRequests, subscribeToScans } from './lib/realtime'
 import { downloadCsv, downloadXlsx, openWebView } from './lib/export'
 import { enablePush, disablePush, getPushStatus } from './lib/push'
 import { drawBarcode, downloadBarcode, BARCODE_CANVAS_ID } from './lib/barcode'
@@ -2190,6 +2189,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   const [pushStatus, setPushStatus] = useState({ supported: false, permission: 'unsupported', subscribed: false })
   const [pushBusy, setPushBusy] = useState(false)
   const [highlightId, setHighlightId] = useState('')
+  const [lastUpdated, setLastUpdated] = useState(null)
   const knownRequestsRef = useRef(null)
   const requestsSignatureRef = useRef(null)
   const highlightTimerRef = useRef(null)
@@ -2304,6 +2304,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
       if (requestsSignatureRef.current === null || signature !== requestsSignatureRef.current) {
         requestsSignatureRef.current = signature
         setRequests(list.map(row => mapRecord(row, row.status)))
+        setLastUpdated(new Date())
       }
       if (announce) announceChanges(list)
       else if (knownRequestsRef.current === null) announceChanges(list)
@@ -2365,20 +2366,17 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     api.me().then(({ admin: sessionAdmin }) => setCurrentUserId(sessionAdmin?.userId || '')).catch(() => {})
     if (canReceiveNotifications(features)) getPushStatus().then(setPushStatus).catch(() => {})
 
-    // Berlangganan perubahan real-time dari database.
-    // Otomatis refresh + notifikasi in-app saat ada request baru / status berubah.
-    const unsubscribe = subscribeToRequests(() => fetchData({ announce: true }))
-
-    // Cadangan bila Realtime Supabase tidak aktif / koneksi sempat putus.
+    // AUTO RELOAD: polling REST lewat backend. Tidak memakai realtime Supabase
+    // dengan anon key karena itu membuka akses baca data tamu ke publik.
     const requestPoll = window.setInterval(() => {
       if (!document.hidden) fetchData({ announce: true })
-    }, 10000)
+    }, 8000)
 
     const canManageUsers = features.includes('kelola_akun') || features.includes('tambah_edit_akun')
     const usersPoll = canManageUsers
       ? window.setInterval(() => {
           if (!document.hidden) fetchUsers()
-        }, 30000)
+        }, 20000)
       : null
 
     // Saat pengguna kembali ke tab, segera muat ulang semua data yang relevan.
@@ -2391,26 +2389,20 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     document.addEventListener('visibilitychange', handleVisible)
     window.addEventListener('focus', handleVisible)
 
-    // Notifikasi scan HP → laptop: realtime + polling 6 detik sebagai cadangan
-    // (berguna bila realtime Supabase belum aktif / koneksi sempat putus).
-    let unsubscribeScans = () => {}
-    let poll = null
+    let scanPoll = null
     if (features.includes('scan')) {
       fetchScans()
-      unsubscribeScans = subscribeToScans(() => fetchScans())
-      poll = window.setInterval(() => {
+      scanPoll = window.setInterval(() => {
         if (!document.hidden) fetchScans()
-      }, 6000)
+      }, 5000)
     }
 
     return () => {
-      unsubscribe()
       window.clearInterval(requestPoll)
       if (usersPoll) window.clearInterval(usersPoll)
       document.removeEventListener('visibilitychange', handleVisible)
       window.removeEventListener('focus', handleVisible)
-      unsubscribeScans()
-      if (poll) window.clearInterval(poll)
+      if (scanPoll) window.clearInterval(scanPoll)
     }
   }, [])
 
@@ -2598,6 +2590,10 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 lg:flex" title="Data diperbarui otomatis">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              {lastUpdated ? `Diperbarui ${lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Memuat data...'}
+            </div>
             {canReceiveNotifications(features) && (
               <button
                 type="button"

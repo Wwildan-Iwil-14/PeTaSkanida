@@ -14,10 +14,10 @@ const FIELDS_WITH_FEATURES = `${BASE_FIELDS}, features`
  * Jika user_id belum terhubung (misal akun lama sebelum migrasi), fungsi ini
  * otomatis menautkan user_id ke baris profil lama yang cocok.
  */
-export async function getAdminProfile(userId, email) {
+export async function getAdminProfile(userId, email, emailVerified = false) {
   const found = await findProfile(userId, email)
   if (found) return found
-  return linkLegacyProfile(userId, email)
+  return linkLegacyProfile(userId, email, emailVerified)
 }
 
 async function findProfile(userId, email) {
@@ -46,31 +46,23 @@ async function findProfile(userId, email) {
   return legacyData
 }
 
-/** Tautkan profil lama (user_id masih null) ke akun Supabase Auth yang login. */
-async function linkLegacyProfile(userId, email) {
-  if (!email || typeof email !== 'string') return null
+/**
+ * Tautkan profil lama (user_id masih null) ke akun Supabase Auth yang login.
+ *
+ * PENTING (keamanan): hanya email yang cocok yang boleh menautkan profil.
+ * Jangan pernah memakai fallback username='admin' — itu memungkinkan akun
+ * Auth mana pun mengklaim profil admin lama. Email juga harus terverifikasi.
+ */
+async function linkLegacyProfile(userId, email, emailVerified) {
+  if (!email || typeof email !== 'string' || !emailVerified) return null
   const normalized = email.trim().toLowerCase()
 
-  // Cari baris admin lama yang email-nya cocok dan user_id masih kosong.
-  const { data: byEmail } = await supabase
+  const { data: legacy } = await supabase
     .from('admins')
     .select('id, nama, role, email, username')
     .ilike('email', normalized)
     .is('user_id', null)
     .maybeSingle()
-
-  let legacy = byEmail
-
-  // Bila tidak ketemu via email, cari baris default lama (username = 'admin').
-  if (!legacy) {
-    const { data: byUsername } = await supabase
-      .from('admins')
-      .select('id, nama, role, email, username')
-      .eq('username', 'admin')
-      .is('user_id', null)
-      .maybeSingle()
-    legacy = byUsername
-  }
 
   if (!legacy) return null
 

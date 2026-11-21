@@ -60,6 +60,10 @@ router.post(
     // Surat tugas bersifat opsional — hanya diunggah bila ada file.
     let uploadedFile = null
     if (req.file) {
+      // Cari tanda tangan file PDF, bukan cuma percaya mimetype/ekstensi.
+      if (req.file.buffer.slice(0, 5).toString('latin1') !== '%PDF-') {
+        throw httpError(415, 'Surat tugas bukan file PDF yang valid.')
+      }
       uploadedFile = await sendToStorage({
         buffer: req.file.buffer,
         originalName: req.file.originalname,

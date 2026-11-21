@@ -365,9 +365,10 @@ PeTaSkanida/
 
 ## 13. Keamanan Penting
 
+- **Panduan lengkap & checklist:** baca [`SECURITY.md`](SECURITY.md).
 - **Jangan pernah commit file `.env`** (sudah diabaikan `.gitignore`).
 - **Service role key** hanya di `backend/.env`, tidak di frontend.
-- **Password admin** dikelola Supabase Auth dengan hash standar industri; ganti password default segera.
+- **Password admin** dikelola Supabase Auth dengan hash standar industri; ganti password default segera (minimal 8 karakter).
 - `VAPID_PRIVATE_KEY` adalah kunci rahasia penandatangan notifikasi — hanya di `backend/.env`, jangan pernah di frontend atau di-commit.
 - Untuk pemakaian publik, jalankan backend di server (bukan laptop) dan gunakan **HTTPS**.
 

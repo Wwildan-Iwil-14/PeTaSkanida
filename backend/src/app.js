@@ -12,6 +12,16 @@ const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/
 export function createApp() {
   const app = express()
 
+  // Header keamanan dasar untuk semua respons API.
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+    res.setHeader('Cache-Control', 'no-store')
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
+    next()
+  })
+
   app.use(
     cors({
       origin(origin, callback) {
