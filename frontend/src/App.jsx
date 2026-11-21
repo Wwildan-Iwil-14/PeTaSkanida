@@ -47,6 +47,24 @@ function getInitialTheme() {
   }
 }
 
+// Logo diambil dari frontend/public/logo-peta-skanida.png. Vite menyalinnya
+// ke root folder build; fallback dipakai bila base path berubah saat deploy.
+function BrandLogo({ className = '' }) {
+  return (
+    <img
+      src={LOGO_SRC}
+      alt="Logo PeTa SKANIDA"
+      className={className}
+      onError={event => {
+        const img = event.currentTarget
+        if (img.dataset.logoFallback) return
+        img.dataset.logoFallback = '1'
+        img.src = '/logo-peta-skanida.png'
+      }}
+    />
+  )
+}
+
 //pengaturan tema gelap terang
 function ThemeToggle({ theme, onToggle, className = '' }) {
   const isDark = theme === 'dark'
@@ -193,7 +211,7 @@ function LoginPage({ onSelect, theme, onToggleTheme }) {
       <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white dark:bg-slate-900 lg:flex">
         <div className="flex items-center gap-3">
-          <img src={LOGO_SRC} alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
+          <BrandLogo className="h-12 w-12 shrink-0 object-contain" />
           <div>
             <p className="font-bold tracking-wide">PeTa SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">SMKN 2 MAGELANG</p>
@@ -214,7 +232,7 @@ function LoginPage({ onSelect, theme, onToggleTheme }) {
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img src={LOGO_SRC} alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
+              <BrandLogo className="h-12 w-12 shrink-0 object-contain" />
               <div>
                 <p className="font-bold tracking-wide text-slate-900 dark:text-slate-100">PeTa SKANIDA</p>
                 <p className="text-[10px] tracking-[.15em] text-slate-400 dark:text-slate-500">SMKN 2 MAGELANG</p>
@@ -326,7 +344,7 @@ function AdminLoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
       <ThemeToggleCorner theme={theme} onToggleTheme={onToggleTheme} />
       <div className="relative hidden flex-col justify-between overflow-hidden bg-[#101827] p-10 text-white dark:bg-slate-900 lg:flex">
         <div className="flex items-center gap-3">
-          <img src={LOGO_SRC} alt="Logo PeTa SKANIDA" className="h-12 w-12 shrink-0 object-contain" />
+          <BrandLogo className="h-12 w-12 shrink-0 object-contain" />
           <div>
             <p className="font-bold tracking-wide">PeTa SKANIDA</p>
             <p className="text-[10px] tracking-[.15em] text-slate-400">ADMIN PANEL</p>
@@ -2281,7 +2299,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#101827] text-white transition-transform duration-300 dark:border-r dark:border-slate-800 dark:bg-slate-900 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-[84px] items-center justify-between border-b border-white/10 px-6">
           <div className="flex items-center gap-3">
-            <img src={LOGO_SRC} alt="Logo PeTa SKANIDA" className="h-10 w-10 shrink-0 rounded-xl bg-white/95 object-contain p-0.5" />
+            <BrandLogo className="h-10 w-10 shrink-0 rounded-xl bg-white/95 object-contain p-0.5" />
             <div><p className="font-bold tracking-wide">PeTa SKANIDA</p><p className="mt-0.5 text-[10px] tracking-[.2em] text-slate-400">ADMIN PANEL</p></div>
           </div>
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 lg:hidden"><X size={19} /></button>
