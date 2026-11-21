@@ -117,7 +117,7 @@ function GuestDetail({ guest }) {
     <dl className="mt-3 space-y-1.5 text-xs sm:text-sm">
       {rows.map(([k, v]) => (
         <div key={k} className="flex gap-2 sm:gap-3">
-          <dt className="w-18 sm:w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider opacity-70">{k}</dt>
+          <dt className="w-[72px] sm:w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider opacity-70">{k}</dt>
           <dd className="min-w-0 break-words font-medium">{v || '-'}</dd>
         </div>
       ))}
