@@ -12,6 +12,9 @@ const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/
 export function createApp() {
   const app = express()
 
+  // Jangan mengumumkan stack/server ke klien.
+  app.disable('x-powered-by')
+
   // Header keamanan dasar untuk semua respons API.
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff')

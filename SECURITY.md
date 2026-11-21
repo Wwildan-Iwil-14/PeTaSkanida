@@ -101,7 +101,11 @@ pengamanan harus diaktifkan lewat konfigurasi layanan.
 - **Polling dibanding realtime.** Setelah policy anon dicabut, pembaruan data
   mengandalkan polling 5–8 detik. Ini mengorbankan instant update demi
   kerahasiaan data tamu.
-- **Rate limeter memori** tidak bersama antar instance serverless.
+- **CSP belum diterapkan** karena halaman memakai inline script untuk tema awal
+  dan widget Vercel Live. Jika widget preview tidak dipakai, tambahkan
+  `Content-Security-Policy` lewat `vercel.json` dengan `script-src 'self'
+  'unsafe-inline'` lalu uji menyeluruh sebelum produksi.
+- **Rate limiter memori** tidak bersama antar instance serverless.
 
 ---
 
