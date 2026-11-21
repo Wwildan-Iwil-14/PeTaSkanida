@@ -70,6 +70,29 @@ export function loadToken() {
 
 // ---- Permintaan HTTP ----
 
+/**
+ * Baca klaim `exp` dari JWT Supabase tanpa memverifikasi tanda tangan
+ * (verifikasi tetap dilakukan backend). Dipakai hanya untuk memperbarui token
+ * sebelum kedaluwarsa, sehingga tidak terjadi banyak request 401 bersamaan.
+ */
+function tokenExpiry(token) {
+  try {
+    const payloadPart = String(token).split('.')[1]
+    if (!payloadPart) return null
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+    const payload = JSON.parse(atob(padded))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+// Satu refresh token hanya boleh ditukar sekali (Supabase memutar token).
+// Simpan promise yang sedang berjalan agar pembaruan paralel tidak saling
+// membatalkan dan mengacaukan sesi.
+let renewSessionPromise = null
+
 async function rawRequest(path, { method = 'GET', body, token } = {}) {
   // FormData berisi file: biarkan browser yang menentukan boundary
   // multipart/form-data (Content-Type tidak boleh di-set manual).
@@ -114,20 +137,30 @@ async function rawRequest(path, { method = 'GET', body, token } = {}) {
  * (dalam hal ini sesi browser ikut dibersihkan).
  */
 async function renewSession() {
+  if (renewSessionPromise) return renewSessionPromise
+
   const refreshToken = readStore(REFRESH_KEY)
   if (!refreshToken) return null
 
-  try {
-    const data = await rawRequest('/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    })
-    saveSession(data)
-    return data.token
-  } catch {
-    clearSession()
-    return null
-  }
+  renewSessionPromise = (async () => {
+    try {
+      const data = await rawRequest('/auth/refresh', {
+        method: 'POST',
+        body: { refreshToken },
+      })
+      saveSession(data)
+      return data.token
+    } catch (err) {
+      // Hanya hapus sesi bila refresh token memang ditolak. Gangguan jaringan
+      // atau error server tidak boleh memaksa pengguna login ulang.
+      if ([400, 401, 403].includes(err?.status)) clearSession()
+      return null
+    } finally {
+      renewSessionPromise = null
+    }
+  })()
+
+  return renewSessionPromise
 }
 
 /**
@@ -135,6 +168,14 @@ async function renewSession() {
  * Jika token kedaluwarsa (401), sesi diperbarui sekali lalu dicoba ulang.
  */
 async function authedRequest(path, opts = {}) {
+  // Perbarui lebih awal bila token hampir habis (<= 60 detik). Ini mencegah
+  // banyak request gagal 401 sekaligus saat token kedaluwarsa.
+  const expiresAt = opts.token ? tokenExpiry(opts.token) : null
+  if (expiresAt && expiresAt - Date.now() < 60_000) {
+    const renewed = await renewSession()
+    if (renewed) opts = { ...opts, token: renewed }
+  }
+
   try {
     return await rawRequest(path, opts)
   } catch (err) {

@@ -1152,20 +1152,29 @@ function TablePaging({ paging }) {
           ))}
         </select>
       </label>
-      {perPage > 0 && totalPages > 1 && (
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman sebelumnya">‹</button>
-          {pageNumbers(page, totalPages).map(item => typeof item === 'number' ? (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setPage(item)}
-              className={`min-w-[32px] rounded-lg px-2 py-1.5 font-semibold transition ${item === page ? 'bg-indigo-500 text-white' : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'}`}
-            >
-              {item}
+      {perPage > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hidden font-semibold sm:inline">Halaman {page} dari {totalPages}</span>
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={() => setPage(1)} disabled={page === 1} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman pertama">«</button>
+            <button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800">
+              <span aria-hidden="true">‹</span> Sebelumnya
             </button>
-          ) : <span key={item} className="px-1 text-slate-400">…</span>)}
-          <button type="button" onClick={() => setPage(current => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman berikutnya">›</button>
+            {pageNumbers(page, totalPages).map(item => typeof item === 'number' ? (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setPage(item)}
+                className={`min-w-[32px] rounded-lg px-2 py-1.5 font-semibold transition ${item === page ? 'bg-indigo-500 text-white' : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'}`}
+              >
+                {item}
+              </button>
+            ) : <span key={item} className="px-1 text-slate-400">…</span>)}
+            <button type="button" onClick={() => setPage(current => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800">
+              Selanjutnya <span aria-hidden="true">›</span>
+            </button>
+            <button type="button" onClick={() => setPage(totalPages)} disabled={page === totalPages} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman terakhir">»</button>
+          </div>
         </div>
       )}
     </div>
@@ -2444,7 +2453,24 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     // Cadangan bila Realtime Supabase tidak aktif / koneksi sempat putus.
     const requestPoll = window.setInterval(() => {
       if (!document.hidden) fetchData({ announce: true })
-    }, 15000)
+    }, 10000)
+
+    const canManageUsers = features.includes('kelola_akun') || features.includes('tambah_edit_akun')
+    const usersPoll = canManageUsers
+      ? window.setInterval(() => {
+          if (!document.hidden) fetchUsers()
+        }, 30000)
+      : null
+
+    // Saat pengguna kembali ke tab, segera muat ulang semua data yang relevan.
+    function handleVisible() {
+      if (document.visibilityState !== 'visible') return
+      fetchData({ announce: true })
+      if (features.includes('scan')) fetchScans()
+      if (canManageUsers) fetchUsers()
+    }
+    document.addEventListener('visibilitychange', handleVisible)
+    window.addEventListener('focus', handleVisible)
 
     // Notifikasi scan HP → laptop: realtime + polling 6 detik sebagai cadangan
     // (berguna bila realtime Supabase belum aktif / koneksi sempat putus).
@@ -2461,6 +2487,9 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     return () => {
       unsubscribe()
       window.clearInterval(requestPoll)
+      if (usersPoll) window.clearInterval(usersPoll)
+      document.removeEventListener('visibilitychange', handleVisible)
+      window.removeEventListener('focus', handleVisible)
       unsubscribeScans()
       if (poll) window.clearInterval(poll)
     }
@@ -2987,8 +3016,9 @@ function App() {
         setAdmin(sessionAdmin)
         setRole('admin')
       })
-      .catch(() => {
-        clearSession()
+      .catch(err => {
+        // Jangan menghapus sesi untuk gangguan jaringan/server sementara.
+        if ([400, 401, 403].includes(err?.status)) clearSession()
       })
       .finally(() => {
         if (active) setRestoring(false)
