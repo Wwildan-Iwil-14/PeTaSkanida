@@ -6,7 +6,7 @@ import { validateRequestPayload } from '../lib/validate.js'
 import { uploadSuratTugas as sendToStorage } from '../lib/storage.js'
 import { uploadSuratTugas as uploadSuratTugasMiddleware } from '../middleware/upload.js'
 import { requireAdmin, requireFeature } from '../middleware/auth.js'
-import { notifyNewRequest, notifyStatusChange } from '../lib/notifications.js'
+import { notifyNewRequest, notifyStatusChange } from '../lib/push.js'
 
 const router = Router()
 
@@ -98,7 +98,7 @@ router.post(
 
     if (error) throw httpError(502, `Gagal menyimpan permintaan: ${error.message}`)
 
-    // Notifikasi WhatsApp ke admin. Modul ini fail-soft: bila Fonnte belum
+    // Notifikasi browser ke admin. Modul ini fail-soft: bila belum
     // dikonfigurasi / gagal, pendaftaran tamu tetap berhasil.
     await notifyNewRequest({ ...payload, ...data })
 

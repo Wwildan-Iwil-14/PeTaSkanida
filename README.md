@@ -1,165 +1,188 @@
-# PeTa SKANIDA — Panduan Lengkap (Untuk Pemula)
+# PeTa SKANIDA — Pendataan Kunjungan Tamu SMKN 2 Kota Magelang
 
-Aplikasi web untuk mengelola **permintaan kunjungan tamu** ke SKANIDA (SMKN 2 Kota Magelang).
+**PeTa SKANIDA** adalah aplikasi web untuk **mempermudah pendataan tamu yang berkunjung ke SMKN 2 Kota Magelang**.
 
-- **Tamu** mengisi form permintaan kunjungan lewat browser.
-- **Admin** masuk ke dashboard untuk menyetujui atau menolak permintaan dan melihat riwayatnya.
+Dulu, tamu yang datang biasanya dicatat manual di buku tamu atau spreadsheet: nama bisa terlewat, status kunjungan tidak jelas, dan arsip sulit dicari. Aplikasi ini menggantikan proses tersebut dengan alur digital:
 
-Panduan ini disusun langkah demi langkah. Ikuti urut dari atas ke bawah. Tidak butuh pengalaman coding.
+- **Tamu** mengisi form permintaan kunjungan dari mana saja lewat browser.
+- **Admin / petugas** menyetujui atau menolak permintaan, memantau tamu yang datang, dan menyimpan riwayatnya.
+- **Notifikasi** otomatis muncul saat ada permintaan baru atau perubahan status.
+- **Tiket QR/barcode** dipakai petugas untuk mencheck-in tamu di lokasi.
+- **Riwayat** bisa dicetak atau diekspor ke Excel/CSV untuk keperluan administrasi sekolah.
+
+Panduan ini ditujukan untuk pemula. Ikuti urutan dari atas ke bawah — tidak perlu pengalaman coding.
 
 ---
 
 ## Daftar Isi
 
-1. [Gambaran Aplikasi](#1-gambaran-aplikasi)
-2. [Yang Harus Disiapkan](#2-yang-harus-disiapkan)
-3. [Ambil Kode dari GitHub](#3-ambil-kode-dari-github)
-4. [Siapkan Database (Supabase)](#4-siapkan-database-supabase)
-5. [Jalankan Backend](#5-jalankan-backend)
-6. [Jalankan Frontend](#6-jalankan-frontend)
-7. [Buka Aplikasi & Login](#7-buka-aplikasi--login)
-8. [Menjalankan Ulang di Lain Hari](#8-menjalankan-ulang-di-lain-hari)
-9. [Struktur Folder](#9-struktur-folder)
-10. [Pemecahan Masalah (Troubleshooting)](#10-pemecahan-masalah-troubleshooting)
-11. [Keamanan Penting](#11-keamanan-penting)
-12. [Perintah Tambahan](#12-perintah-tambahan)
-13. [Fitur Scan QR & Barcode (HP → Laptop Admin)](#13-fitur-scan-qr-hp--notifikasi-di-laptop-admin)
-14. [Notifikasi WhatsApp ke Admin (Fonnte)](#14-notifikasi-whatsapp-ke-admin-fonnte)
-15. [Notifikasi Browser & Ekspor Riwayat](#15-notifikasi-browser--ekspor-riwayat)
+1. [Tentang Aplikasi](#1-tentang-aplikasi)
+2. [Fitur Unggulan](#2-fitur-unggulan)
+3. [Yang Harus Disiapkan](#3-yang-harus-disiapkan)
+4. [Ambil Kode dari GitHub](#4-ambil-kode-dari-github)
+5. [Siapkan Database (Supabase)](#5-siapkan-database-supabase)
+6. [Jalankan Backend](#6-jalankan-backend)
+7. [Jalankan Frontend](#7-jalankan-frontend)
+8. [Buka Aplikasi & Login](#8-buka-aplikasi--login)
+9. [Alur Kerja Sehari-hari](#9-alur-kerja-sehari-hari)
+10. [Menjalankan Ulang di Lain Hari](#10-menjalankan-ulang-di-lain-hari)
+11. [Struktur Folder](#11-struktur-folder)
+12. [Pemecahan Masalah](#12-pemecahan-masalah)
+13. [Keamanan Penting](#13-keamanan-penting)
+14. [Perintah Tambahan & API](#14-perintah-tambahan--api)
+15. [Pengaturan Lanjutan](#15-pengaturan-lanjutan)
+16. [Lisensi](#16-lisensi)
 
 ---
 
-## 1. Gambaran Aplikasi
+## 1. Tentang Aplikasi
 
-Aplikasi ini terdiri dari **3 bagian** yang saling terhubung:
+### Masalah yang diatasi
+
+SMKN 2 Kota Magelang menerima banyak tamu: guru dari sekolah lain, siswa studi banding, orang tua, mitra industri, dan instansi pemerintah. Pencatatan manual punya beberapa kelemahan:
+
+| Masalah | Solusi di PeTa SKANIDA |
+|---|---|
+| Nama tamu tertulis tidak rapi / terlewat | Tamu mengisi sendiri form terstruktur |
+| Tidak jelas tamu sudah disetujui atau belum | Status **Pending / Diterima / Ditolak / Selesai** |
+| Admin baru tahu ada tamu saat tamu sudah tiba | Notifikasi otomatis saat form dikirim |
+| Sulit mencari arsip kunjungan | Pencarian, filter status, dan riwayat tersimpan rapi |
+| Buku tamu fisik bisa hilang / rusak | Data tersimpan aman di cloud (Supabase) |
+| Laporan dibuat ulang manual | Ekspor **Excel / CSV / cetak PDF** sekali klik |
+
+### Siapa saja yang memakainya
+
+| Peran | Apa yang dilakukan |
+|---|---|
+| **Tamu** | Mengisi form kunjungan, mendapat tiket QR/barcode |
+| **Petugas** | Memindai tiket tamu lewat HP saat check-in |
+| **Admin** | Menyetujui/menolak permintaan, menghubungi tamu, menandai selesai |
+| **Super admin** | Mengelola akun, pengaturan, dan seluruh data |
+
+### Teknologi yang dipakai
 
 ```
-Browser (Frontend)  --->  Server (Backend)  --->  Database (Supabase/PostgreSQL)
-     tampilan web           pengolah data              tempat menyimpan data
+Browser (React + Vite + Tailwind)  ──>  Server API (Express)  ──>  Supabase
+     tampilan untuk tamu & admin        aturan & keamanan         database, login, file, realtime
 ```
 
-- **Frontend** = tampilan yang dilihat pengguna (dibuat dengan React + Vite).
-- **Backend** = server kecil yang mengurus login admin dan penyimpanan data (dibuat dengan Express).
-- **Database** = tempat data disimpan di cloud (memakai Supabase).
+- **Frontend**: React + Vite + Tailwind CSS — tampilan yang dibuka di browser.
+- **Backend**: Express — mengurus login admin, validasi, dan semua penulisan data.
+- **Database**: Supabase (PostgreSQL) — menyimpan data, akun admin, file surat tugas, dan update real-time.
 
-Ketiganya harus diatur dan dijalankan supaya aplikasi bisa berfungsi.
+Ketiganya harus berjalan supaya aplikasi berfungsi.
 
 ---
 
-## 2. Yang Harus Disiapkan
+## 2. Fitur Unggulan
+
+1. **Form permintaan kunjungan** — nama/instansi, email, no. HP, tujuan, keperluan, tanggal, jam, jumlah tamu, dan surat tugas opsional (PDF maks. 4 MB).
+2. **Tiket QR + barcode** — otomatis muncul setelah tamu mengirim form, bisa diunduh.
+3. **Dashboard admin** — ringkasan request menunggu, diterima, dan ditolak.
+4. **Persetujuan & penolakan** — satu klik, status langsung berubah dan data pindah ke kategori yang tepat.
+5. **Notifikasi** — muncul di browser/laptop admin (Web Push) dan di dalam dashboard. Klik **Lihat data** pada notifikasi untuk membuka dan menyorot barisnya.
+6. **Scan QR/barcode tamu** — petugas memindai dengan kamera HP; hasilnya muncul sebagai notifikasi + bunyi di komputer admin.
+7. **Riwayat kunjungan** — arsip rapi, bisa dicari/filter, dan diekspor ke **Lihat Web (PDF)**, **Excel (.xlsx)**, atau **CSV (.csv)**.
+8. **Kelola akun** — super admin bisa menambah/edit/hapus admin & petugas dengan pembagian fitur (role).
+9. **Real-time + cadangan** — data diperbarui otomatis; bila koneksi realtime terputus, ada polling sebagai cadangan.
+10. **Tampilan responsif** — nyaman dipakai di HP, tablet, maupun laptop.
+
+---
+
+## 3. Yang Harus Disiapkan
 
 | Kebutuhan | Keterangan |
 |---|---|
 | **Node.js versi 18 ke atas** | Untuk menjalankan backend dan frontend. Unduh di <https://nodejs.org>, pilih versi **LTS**. |
 | **Akun Supabase (gratis)** | Untuk database. Daftar di <https://supabase.com>. |
-| **Git** (opsional) | Untuk mengunduh kode. Jika tidak ada Git, kode bisa diunduh sebagai file ZIP. |
-| **Browser modern** | Chrome, Edge, Firefox, dan sejenisnya. |
-| **Terminal** | Windows: **PowerShell** atau **Command Prompt**. Mac/Linux: **Terminal**. |
+| **Git** (opsional) | Untuk mengunduh kode. Bisa juga unduh ZIP. |
+| **Browser modern** | Chrome, Edge, Firefox, atau sejenisnya. |
+| **Terminal** | Windows: PowerShell / CMD. Mac/Linux: Terminal. |
 
-Cek apakah Node.js sudah terpasang. Buka terminal, lalu ketik:
+Cek instalasi Node.js:
 
 ```bash
 node -v
 npm -v
 ```
 
-Jika muncul nomor versi (misalnya `v18.x` atau lebih baru), berarti Node.js sudah siap.
-Jika muncul pesan "command not found", pasang Node.js terlebih dahulu, lalu **tutup dan buka lagi terminal**.
-
-> **Tips memakai terminal:** ketik perintah, lalu tekan **Enter**. Salin dan tempel perintah satu per satu.
+Jika muncul nomor versi, berarti siap. Jika `command not found`, pasang Node.js dulu lalu buka ulang terminal.
 
 ---
 
-## 3. Ambil Kode dari GitHub
+## 4. Ambil Kode dari GitHub
 
 ### Cara A — dengan Git (disarankan)
 
 ```bash
-git clone https://github.com/massmoses25-maker/Peta-skanida.git
-cd Peta-skanida
+git clone https://github.com/wildanazizsolikhudin3-code/PeTaSkanida.git
+cd PeTaSkanida
 ```
 
 ### Cara B — tanpa Git (unduh ZIP)
 
-1. Buka halaman GitHub projek ini.
-2. Klik tombol hijau **Code**, lalu klik **Download ZIP**.
-3. Ekstrak (unzip) file yang sudah diunduh.
-4. Buka terminal, lalu masuk ke folder hasil ekstrak:
+1. Buka halaman GitHub proyek.
+2. Klik tombol hijau **Code** → **Download ZIP**.
+3. Ekstrak file tersebut.
+4. Masuk ke folder hasil ekstrak lewat terminal.
 
-```bash
-cd path/ke/folder/Peta-skanida
-```
-
-> Semua perintah di bawah dijalankan **dari dalam folder `Peta-skanida`**, kecuali jika ada keterangan lain.
+> Semua perintah di bawah dijalankan **dari dalam folder `PeTaSkanida`**, kecuali ada keterangan lain.
 
 ---
 
-## 4. Siapkan Database (Supabase)
+## 5. Siapkan Database (Supabase)
 
-Database hanya perlu disiapkan **sekali**. Jika kamu memakai database yang sudah ada, langsung lanjut ke [Langkah 5](#5-jalankan-backend).
+Database hanya perlu disiapkan **sekali**. Jika sudah memakai database yang ada, lanjut ke [Langkah 6](#6-jalankan-backend).
 
-### 4.1 Buat project Supabase
+### 5.1 Buat project Supabase
 
 1. Masuk ke <https://supabase.com>, lalu login.
 2. Klik **New Project**. Isi nama project, password database, dan pilih region terdekat (misalnya Singapore).
-3. Tunggu sampai project selesai dibuat (statusnya harus **Active**).
+3. Tunggu sampai status project **Active**.
 
-### 4.2 Jalankan file SQL
+### 5.2 Jalankan file SQL
 
-1. Di dashboard project, buka menu **SQL Editor** di sidebar kiri.
-2. Klik **New query**.
-3. Buka file `database/schema.sql` di komputer, lalu **salin seluruh isinya**.
-4. Tempel ke kotak SQL Editor, lalu klik **Run** (atau tekan Ctrl+Enter).
-5. Pastikan tidak ada error berwarna merah. Perintah ini membuat semua tabel, aturan keamanan, dan akun admin default.
+1. Di dashboard project, buka **SQL Editor** → **New query**.
+2. Salun seluruh isi `database/schema.sql`, tempel, lalu klik **Run** (Ctrl+Enter).
+3. Pastikan tidak ada error merah. Perintah ini membuat tabel, aturan keamanan, dan realtime.
 
-Data contoh (opsional): jalankan juga isi `database/seed.sql` jika ingin data percobaan.
+**Database yang sudah berjalan:** jalankan juga migration yang belum pernah dijalankan dari folder `database/migrations/`. Yang terbaru:
 
-### 4.3 Ambil 3 nilai penting
+- `20261121000000_create_push_subscriptions.sql` — wajib untuk notifikasi browser.
 
-Buka **Project Settings** (ikon gerigi), lalu pilih **API** (atau **API Keys**). Catat:
+Data contoh opsional: jalankan `database/seed.sql`.
 
-| Nilai | Nama di dashboard | Dipakai di |
-|---|---|---|
-| **Project URL** | `Project URL` (bentuknya `https://xxxxx.supabase.co`) | Backend & Frontend |
-| **Anon key** | `anon` / `public` | Frontend & Backend |
-| **Service role key** | `service_role` / `secret` | **Hanya Backend** |
+### 5.3 Ambil 3 nilai penting
 
-> ⚠️ **Service role key adalah kunci rahasia.** Jangan pernah menaruhnya di frontend atau membagikannya ke publik.
+Buka **Project Settings** → **API / API Keys**. Catat:
 
-Penjelasan detail tentang database ada di [`database/README.md`](database/README.md).
+| Nilai | Dipakai di |
+|---|---|
+| **Project URL** (`https://xxxxx.supabase.co`) | Backend & Frontend |
+| **Anon / public key** | Frontend & Backend |
+| **Service role key** | **Hanya Backend** |
+
+> ⚠️ **Service role key adalah kunci rahasia.** Jangan pernah ditaruh di frontend atau dibagikan.
+
+Detail lengkap ada di [`database/README.md`](database/README.md).
 
 ---
 
-## 5. Jalankan Backend
+## 6. Jalankan Backend
 
-### 5.1 Install kebutuhan backend
+### 6.1 Install kebutuhan
 
 ```bash
 cd backend
 npm install
 ```
 
-Perintah `npm install` mengunduh semua library yang dibutuhkan backend. Butuh koneksi internet, dan cukup dijalankan sekali.
+### 6.2 Buat file `.env`
 
-### 5.2 Buat file pengaturan `.env`
+**Windows:** `copy .env.example .env`  
+**Mac/Linux:** `cp .env.example .env`
 
-File ini berisi kunci rahasia untuk koneksi ke Supabase.
-
-**Windows (PowerShell/CMD):**
-
-```powershell
-copy .env.example .env
-```
-
-**Mac/Linux:**
-
-```bash
-cp .env.example .env
-```
-
-### 5.3 Isi file `.env`
-
-Buka file `backend/.env` dengan text editor (Notepad, VS Code, dll), lalu isi seperti ini:
+### 6.3 Isi `backend/.env`
 
 ```env
 PORT=3001
@@ -167,81 +190,58 @@ SUPABASE_URL=https://PROJECT-URL-KAMU.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=TEMPEL-SERVICE-ROLE-KEY
 SUPABASE_ANON_KEY=TEMPEL-ANON-KEY
 CORS_ORIGIN=http://localhost:5173
+
+# Notifikasi browser (Web Push)
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@petaskanida.sch.id
 ```
 
-Cara mengisinya:
+- `SUPABASE_URL` → Project URL dari Langkah 5.3.
+- `SUPABASE_SERVICE_ROLE_KEY` → service role key.
+- `SUPABASE_ANON_KEY` → anon key.
+- Untuk notifikasi browser, buat kunci VAPID dengan `npm run push:keys` lalu isi dua baris VAPID di atas.
 
-- `SUPABASE_URL` → **Project URL** dari Langkah 4.3.
-- `SUPABASE_SERVICE_ROLE_KEY` → **service_role key**.
-- `SUPABASE_ANON_KEY` → **anon key**.
-- Sisanya biarkan seperti contoh.
+> **Catatan:** login admin memakai **Supabase Auth**, sehingga `AUTH_SECRET` dan `TOKEN_TTL_SECONDS` tidak dipakai. Simpan `.env` sebagai **UTF-8 tanpa BOM** dan tanpa tanda kutip di sekitar nilai.
 
-> **Catatan:** autentikasi admin memakai **Supabase Auth (schema auth / GoTrue)**. Variabel `AUTH_SECRET` dan `TOKEN_TTL_SECONDS` tidak dipakai lagi.
->
-> **Penting:** simpan file sebagai **UTF-8 (tanpa BOM)**. Jika muncul karakter aneh di awal file, hapus. Jangan menambahkan tanda kutip (`"`) di sekitar nilai.
-
-### 5.4 Buat akun super admin (Supabase Auth)
-
-Jalankan perintah berikut untuk membuat akun di Supabase Auth sekaligus membuat profilnya di tabel database:
+### 6.4 Buat akun super admin
 
 ```bash
 npm run admin:create -- admin@skanida.sch.id admin123 "Administrator" super_admin
 ```
 
-*(Kamu boleh mengganti `admin123` dengan password yang kamu inginkan. Role yang tersedia: `petugas`, `admin`, `super_admin`. Buat minimal satu `super_admin` agar menu Pengguna dan Database bisa diakses.)*
+Ganti `admin123` dengan password yang kuat. Role yang tersedia: `petugas`, `admin`, `super_admin`. Buat minimal satu `super_admin`.
 
-### 5.5 Jalankan server backend
+### 6.5 Jalankan server
 
 ```bash
 npm run dev
 ```
 
-Jika berhasil, akan muncul tulisan seperti ini:
+Jika berhasil:
 
 ```
 [backend] PeTa SKANIDA API berjalan di http://localhost:3001/api
 ```
 
-Biarkan terminal ini **tetap terbuka**. Backend harus terus berjalan selama aplikasi dipakai.
+Biarkan terminal ini tetap terbuka. Cek kesehatan di <http://localhost:3001/api/health> — harus muncul `{"status":"ok","service":"peta-skanida-backend"}`.
 
-### 5.6 Cek backend hidup
-
-Buka browser, lalu akses: <http://localhost:3001/api/health>
-
-Yang muncul harus: `{"status":"ok","service":"peta-skanida-backend"}`
-
-Detail tentang backend ada di [`backend/README.md`](backend/README.md).
+Detail: [`backend/README.md`](backend/README.md).
 
 ---
 
-## 6. Jalankan Frontend
+## 7. Jalankan Frontend
 
-Buka **terminal baru** (jangan tutup terminal backend), lalu dari folder utama `Peta-skanida`:
-
-### 6.1 Install kebutuhan frontend
+Buka **terminal baru** (jangan tutup terminal backend), dari folder utama:
 
 ```bash
 cd frontend
 npm install
+copy .env.example .env     # Windows
+cp .env.example .env       # Mac/Linux
 ```
 
-### 6.2 Buat file pengaturan `.env`
-
-**Windows:**
-
-```powershell
-copy .env.example .env
-```
-
-**Mac/Linux:**
-
-```bash
-cp .env.example .env
-```
-
-### 6.3 Isi file `.env`
-
-Buka `frontend/.env`, lalu isi:
+Isi `frontend/.env`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3001/api
@@ -249,309 +249,240 @@ VITE_SUPABASE_URL=https://PROJECT-URL-KAMU.supabase.co
 VITE_SUPABASE_ANON_KEY=TEMPEL-ANON-KEY
 ```
 
-Penjelasan:
-
-- `VITE_API_BASE_URL` → alamat backend. Biarkan default jika dipakai di komputer sendiri.
-- `VITE_SUPABASE_URL` → **Project URL**.
-- `VITE_SUPABASE_ANON_KEY` → **anon key** (boleh dipakai di browser; **jangan** memakai service role key).
-
-### 6.4 Jalankan frontend
+Lalu jalankan:
 
 ```bash
 npm run dev
 ```
 
-Jika berhasil, akan muncul alamat seperti ini:
+Akan muncul alamat **<http://localhost:5173/>**. Biarkan terminal tetap terbuka.
 
-```
-➜  Local:   http://localhost:5173/
-```
-
-Detail tentang frontend ada di [`frontend/README.md`](frontend/README.md).
+Detail: [`frontend/README.md`](frontend/README.md).
 
 ---
 
-## 7. Buka Aplikasi & Login
+## 8. Buka Aplikasi & Login
 
-Buka browser ke: **<http://localhost:5173/>**
-
-Halaman awal menyediakan dua pilihan:
+Buka browser ke **<http://localhost:5173/>**.
 
 - **Tamu** → mengisi form permintaan kunjungan.
-- **Admin / Pengelola** → login untuk mengelola permintaan.
-
-### Akun admin
-
-Login admin menggunakan **email** dan **password** yang dibuat di Langkah 5.4:
+- **Admin / Pengelola** → login menggunakan email + password yang dibuat di Langkah 6.4.
 
 | Email | Password |
 |---|---|
 | `admin@skanida.sch.id` | `admin123` *(atau password yang kamu buat)* |
 
-> 🔒 **Ganti password:** kamu bisa mengganti password kapan saja lewat `npm run admin:create -- admin@skanida.sch.id PASSWORD_BARU "Administrator"`, atau lewat Supabase Dashboard (**Authentication > Users**).
+> 🔒 Segera ganti password default. Bisa lewat `npm run admin:create -- <email> <password-baru> "Administrator"` atau Supabase Dashboard → **Authentication → Users**.
 
 ---
 
-## 8. Menjalankan Ulang di Lain Hari
+## 9. Alur Kerja Sehari-hari
 
-Kamu **tidak perlu** mengulang langkah database dan `npm install` setiap hari — asalkan folder `node_modules` belum dihapus.
+### Tamu
 
-### Cara mudah (satu terminal, dari folder utama)
+1. Buka aplikasi → pilih **Tamu**.
+2. Isi form (nama/instansi, tujuan, keperluan, tanggal, jam, jumlah, no. HP; email & surat tugas opsional).
+3. Setelah terkirim, muncul **tiket QR + barcode** berisi kode `REQ-xxx`. Unduh/simpan tiket.
+4. Admin akan memproses permintaan; status bisa dilihat lewat notifikasi/konfirmasi sekolah.
 
-```bash
-npm run dev
-```
+### Admin
 
-Perintah ini menjalankan backend dan frontend sekaligus.
+1. Login → **Daftar Request** → pilih **Terima** atau **Tolak**.
+2. Notifikasi otomatis terkirim ke perangkat admin.
+3. Di **Kelola Tamu**, hubungi tamu via WhatsApp dan tandai sudah dihubungi.
+4. Saat kunjungan selesai, klik **Selesai** → data pindah ke **Riwayat Kunjungan**.
+5. Di **Riwayat Kunjungan**, cari/filter data lalu ekspor ke PDF/Excel/CSV bila perlu.
 
-### Cara terpisah (dua terminal)
+### Petugas lapangan
 
-**Terminal 1 — backend:**
-
-```bash
-npm run dev:backend
-```
-
-**Terminal 2 — frontend:**
-
-```bash
-npm run dev:frontend
-```
-
-Setelah itu buka <http://localhost:5173/>.
-
-> Jika ini pertama kali dijalankan setelah clone, jalankan dulu `npm run install:all` untuk memasang kebutuhan frontend dan backend sekaligus.
+1. Login di HP → menu **Scan Tamu** → aktifkan kamera.
+2. Arahkan kamera ke QR/barcode tiket tamu.
+3. Hasil scan muncul di layar petugas dan sekaligus sebagai notifikasi + bunyi di komputer admin.
 
 ---
 
-## 9. Struktur Folder
+## 10. Menjalankan Ulang di Lain Hari
 
-```
-Peta-skanida/
-├── frontend/   # Tampilan aplikasi (React + Vite) — dibuka di browser
-├── backend/    # Server API (Express) — pengolah data & login
-├── database/   # File SQL untuk Supabase (schema, seed, migration)
-├── scripts/    # Skrip bantu untuk menjalankan mode dev
-└── README.md   # Panduan ini
+Cara paling mudah, dari folder utama:
+
+```bash
+npm run dev        # menjalankan backend + frontend sekaligus
 ```
 
-| Folder | Penjelasan singkat | Panduan |
+Atau terpisah:
+
+```bash
+npm run dev:backend    # terminal 1
+npm run dev:frontend   # terminal 2
+```
+
+> Jika `node_modules` sudah dihapus, jalankan `npm run install:all` dulu.
+
+---
+
+## 11. Struktur Folder
+
+```
+PeTaSkanida/
+├── frontend/    # Tampilan web (React + Vite) — form tamu & dashboard admin
+├── backend/     # Server API (Express) — login, validasi, notifikasi
+├── database/    # SQL Supabase (schema, seed, migration)
+├── scripts/     # Skrip bantu menjalankan mode dev
+└── README.md    # Panduan ini
+```
+
+| Folder | Penjelasan | Panduan |
 |---|---|---|
-| `frontend/` | Yang dilihat pengguna di browser | [frontend/README.md](frontend/README.md) |
-| `backend/` | Server yang menghubungkan tampilan ke database | [backend/README.md](backend/README.md) |
-| `database/` | Struktur & aturan database (dijalankan di Supabase) | [database/README.md](database/README.md) |
+| `frontend/` | Yang dilihat tamu & admin di browser | [`frontend/README.md`](frontend/README.md) |
+| `backend/` | Penghubung tampilan ke database | [`backend/README.md`](backend/README.md) |
+| `database/` | Struktur & aturan database | [`database/README.md`](database/README.md) |
 
-> **Tentang `node_modules`:** folder `node_modules` (di root, `frontend/`, dan `backend/`) **bukan kode program** dan tidak disimpan di Git. Isinya library yang diunduh otomatis oleh npm dari `package.json` dan `package-lock.json`.
->
-> - **Aman dihapus kapan saja** untuk menghemat ruang atau membersihkan instalasi yang rusak.
-> - Setelah dihapus, jalankan `npm run install:all` dari folder utama sebelum menjalankan aplikasi.
-> - **Jangan menyalin** folder `node_modules` dari komputer lain, apalagi beda sistem operasi — bisa muncul error seperti `Cannot find module @rollup/rollup-linux-x64-gnu` atau `You installed esbuild for another platform`.
-> - Folder ini sudah otomatis diabaikan `.gitignore`, jadi tidak akan ikut ter-commit.
+> **`node_modules` bukan kode program.** Folder ini dihasilkan `npm install`, diabaikan Git, dan aman dihapus kapan saja. Jangan menyalinnya dari komputer/OS lain — bisa muncul error seperti `Cannot find module @rollup/...`.
 
 ---
 
-## 10. Pemecahan Masalah (Troubleshooting)
+## 12. Pemecahan Masalah
 
-| Gejala | Kemungkinan Penyebab | Solusi |
+| Gejala | Penyebab | Solusi |
 |---|---|---|
 | `node: command not found` | Node.js belum terpasang | Pasang dari <https://nodejs.org>, lalu buka ulang terminal |
-| `npm install` gagal | Koneksi internet bermasalah / cache rusak | Coba lagi; jika perlu jalankan `npm cache clean --force` lalu `npm install` |
-| Error `Cannot find module @rollup/...` / `installed esbuild for another platform` | Folder `node_modules` disalin dari komputer/OS lain | Hapus semua `node_modules` (root, `frontend/`, `backend/`), lalu jalankan `npm run install:all` |
-| Aplikasi tidak jalan setelah `node_modules` dihapus | Library belum dipasang ulang | Jalankan `npm run install:all` |
-| Backend: **"Konfigurasi backend belum lengkap"** | `backend/.env` belum diisi | Isi `SUPABASE_URL` dan key sesuai Langkah 5.3 |
-| Backend: **"Invalid API key"** | Key salah atau tertukar | Salin ulang anon & service_role key dengan benar |
-| Frontend: **"Tidak dapat terhubung ke backend"** | Backend belum jalan / URL salah | Pastikan backend aktif (`npm run dev`) dan `VITE_API_BASE_URL` benar |
-| Halaman frontend kosong / error Supabase | `frontend/.env` belum ada atau salah isi | Buat dan isi `frontend/.env` (Langkah 6.3), lalu restart `npm run dev` |
-| Login admin gagal | Akun admin belum dibuat / email atau password salah | Buat atau reset akun lewat `npm run admin:create -- admin@skanida.sch.id password` |
-| Data tidak muncul | `schema.sql` belum dijalankan | Jalankan ulang `database/schema.sql` di Supabase SQL Editor |
-| Real-time tidak update | Realtime belum aktif | Jalankan migration `20261110000002_enable_realtime.sql` di Supabase |
-| Port sudah dipakai (`EADDRINUSE`) | Ada proses lain di port 3001/5173 | Tutup aplikasi lain, atau ubah `PORT` di `backend/.env` |
-| File `.env` muncul aneh di awal | File tersimpan dengan BOM | Simpan ulang sebagai UTF-8 tanpa BOM |
+| `npm install` gagal | Internet / cache bermasalah | Coba lagi atau `npm cache clean --force` |
+| Error `Cannot find module @rollup/...` | `node_modules` disalin dari OS lain | Hapus semua `node_modules`, jalankan `npm run install:all` |
+| Backend: **"Konfigurasi backend belum lengkap"** | `.env` belum diisi | Isi `SUPABASE_URL` dan key (Langkah 6.3) |
+| Backend: **"Invalid API key"** | Key tertukar | Salin ulang anon & service role key |
+| Frontend: **"Tidak dapat terhubung ke backend"** | Backend mati / URL salah | Pastikan backend jalan dan `VITE_API_BASE_URL` benar |
+| Halaman kosong / error Supabase | `frontend/.env` belum diisi | Isi lalu restart `npm run dev` |
+| Login admin gagal | Akun belum dibuat / password salah | Buat/reset lewat `npm run admin:create` |
+| Data tidak muncul | `schema.sql` belum dijalankan | Jalankan ulang di Supabase SQL Editor |
+| Real-time tidak update | Realtime belum aktif | Jalankan `database/migrations/20261110000002_enable_realtime.sql` |
+| `Could not find the table 'public.push_subscriptions'` | Migration notifikasi belum dijalankan | Jalankan `database/migrations/20261121000000_create_push_subscriptions.sql` |
+| Notifikasi browser tidak muncul | Izin push ditolak / bukan HTTPS | Klik ikon lonceng di header, izinkan notifikasi, gunakan HTTPS atau localhost |
+| Port dipakai (`EADDRINUSE`) | Port 3001/5173 sudah dipakai | Tutup aplikasi lain atau ubah `PORT` |
 
-**Cara cepat memeriksa urutan yang benar:** Database sudah dijalankan di Supabase → Backend jalan (`:3001`) → Frontend jalan (`:5173`) → buka browser.
-
----
-
-## 11. Keamanan Penting
-
-- **Jangan pernah commit** file `.env` ke GitHub (sudah otomatis diabaikan oleh `.gitignore`).
-- **Service role key** hanya boleh ada di `backend/.env`. Jangan taruh di frontend.
-- **Password admin dikelola oleh Supabase Auth** (schema auth) dengan hash standar industri.
-- **Segera ganti password admin default** setelah akun dibuat.
-- Untuk pemakaian publik, jalankan backend di server (bukan laptop) dan gunakan HTTPS.
+**Urutan yang benar:** Database siap → Backend jalan (`:3001`) → Frontend jalan (`:5173`) → buka browser.
 
 ---
 
-## 12. Perintah Tambahan
+## 13. Keamanan Penting
 
-Dijalankan dari folder utama `Peta-skanida`:
+- **Jangan pernah commit file `.env`** (sudah diabaikan `.gitignore`).
+- **Service role key** hanya di `backend/.env`, tidak di frontend.
+- **Password admin** dikelola Supabase Auth dengan hash standar industri; ganti password default segera.
+- `VAPID_PRIVATE_KEY` adalah kunci rahasia penandatangan notifikasi — hanya di `backend/.env`, jangan pernah di frontend atau di-commit.
+- Untuk pemakaian publik, jalankan backend di server (bukan laptop) dan gunakan **HTTPS**.
+
+---
+
+## 14. Perintah Tambahan & API
+
+Dijalankan dari folder utama `PeTaSkanida`:
 
 | Perintah | Fungsi |
 |---|---|
 | `npm run install:all` | Install kebutuhan frontend + backend sekaligus |
 | `npm run dev` | Jalankan frontend & backend bersamaan |
-| `npm run dev:backend` | Jalankan backend saja |
-| `npm run dev:frontend` | Jalankan frontend saja |
-| `npm run build` | Membuat versi produksi frontend (folder `frontend/dist`) |
-| `npm run db:sync` | Menyalin file migration database ke folder backend |
-| `npm run admin:create -- <email> <pwd> [nama] [role]` | Buat atau perbarui akun di Supabase Auth & profil database (role: petugas / admin / super_admin) |
+| `npm run dev:backend` / `npm run dev:frontend` | Jalankan salah satu saja |
+| `npm run build` | Buat versi produksi frontend di `frontend/dist` |
+| `npm run db:sync` | Salin migration ke folder backend |
+| `npm run admin:create -- <email> <pwd> [nama] [role]` | Buat/perbarui akun admin |
+| `cd backend && npm run push:keys` | Buat kunci VAPID untuk notifikasi browser |
 
-> Setelah folder `node_modules` dihapus, jalankan `npm run install:all` terlebih dahulu sebelum `npm run dev`.
+### Endpoint API utama
 
-### Daftar endpoint API (untuk pengembang)
-
-| Method | Endpoint | Perlu login admin? | Keterangan |
+| Method | Endpoint | Login admin? | Keterangan |
 |---|---|---|---|
-| GET | `/` | Tidak | Info bahwa backend berjalan (bukan tampilan aplikasi) |
 | GET | `/api/health` | Tidak | Cek server hidup |
-| POST | `/api/auth/login` | Tidak | Login admin (email + password) → access & refresh token |
-| POST | `/api/auth/refresh` | Tidak | Tukar refresh token dengan access token baru |
-| POST | `/api/auth/logout` | Opsional | Cabut sesi admin di Supabase Auth |
-| GET | `/api/auth/me` | Ya | Cek profil admin dari token aktif |
+| POST | `/api/auth/login` | Tidak | Login admin |
+| POST | `/api/auth/refresh` | Tidak | Perbarui token |
+| POST | `/api/auth/logout` | Opsional | Cabut sesi |
+| GET | `/api/auth/me` | Ya | Profil admin aktif |
 | POST | `/api/requests` | Tidak | Form pengajuan tamu |
-| GET | `/api/requests` | Ya | Ambil seluruh data request |
-| POST | `/api/requests/:id/approve` | Ya | Setujui permohonan |
-| POST | `/api/requests/:id/reject` | Ya | Tolak permohonan |
-| POST | `/api/requests/:id/complete` | Ya | Tandai selesai → pindah ke Riwayat Kunjungan |
-| PATCH | `/api/requests/:id/contacted` | Ya | Tandai tamu sudah/belum dihubungi (`{ "dihubungi": true }`) |
-| POST | `/api/requests/admin` | Ya | Tambah tamu oleh admin (bisa langsung berstatus Diterima/Ditolak/Selesai) |
-| PATCH | `/api/requests/:id` | Ya | Edit data tamu |
-| DELETE | `/api/requests/:id` | Ya | Hapus tamu beserta data terkait |
-| POST | `/api/history` | Ya | Tambah entri riwayat |
-| PATCH | `/api/history/:id` | Ya | Edit entri riwayat |
-| DELETE | `/api/history/:id` | Ya | Hapus entri riwayat |
-| GET | `/api/admin/users` | Ya | Daftar akun admin/petugas |
-| POST | `/api/admin/users` | Ya | Tambah admin/petugas |
-| PATCH | `/api/admin/users/:id` | Ya | Edit admin/petugas (nama, email, password, role) |
-| DELETE | `/api/admin/users/:id` | Ya | Hapus admin/petugas (tidak bisa menghapus diri sendiri) |
+| GET | `/api/requests` | Ya | Daftar request + status |
+| POST | `/api/requests/:id/approve` | Ya | Setujui |
+| POST | `/api/requests/:id/reject` | Ya | Tolak |
+| POST | `/api/requests/:id/complete` | Ya | Selesai → riwayat |
+| PATCH | `/api/requests/:id/contacted` | Ya | Tandai sudah dihubungi |
+| POST | `/api/requests/admin` | Ya | Tambah tamu oleh admin |
+| PATCH / DELETE | `/api/requests/:id` | Ya | Edit / hapus tamu |
+| POST / PATCH / DELETE | `/api/history` ... | Ya | Kelola arsip riwayat |
+| GET / POST / PATCH / DELETE | `/api/admin/users` ... | Ya | Kelola akun admin |
+| POST / GET | `/api/scans` | Ya | Catat & baca scan QR |
+| GET | `/api/push/public-key` | Tidak | Kunci publik untuk langganan browser |
+| POST / DELETE | `/api/push/subscribe` | Ya | Aktifkan / matikan notifikasi perangkat |
 
-Endpoint yang perlu login memakai header: `Authorization: Bearer <token>`.
+Endpoint yang butuh login memakai header: `Authorization: Bearer <token>`.
 
-### Fitur kelola admin
+---
 
-Menu **Pengguna** dipakai untuk menambah, mengedit, dan menghapus akun admin/petugas. Menu **Kelola Tamu** menyediakan tambah, edit, hapus, dan tombol **Selesai** untuk memindahkan tamu ke **Riwayat Kunjungan**. Menu **Riwayat Kunjungan** juga menyediakan tambah, edit, dan hapus arsip kunjungan.
+## 15. Pengaturan Lanjutan
 
-### Upload Surat Tugas (opsional)
+### Surat tugas (opsional)
 
-Form tamu punya kolom **Surat Tugas** yang **tidak wajib diisi**. Jika diisi, file PDF (maks. 4 MB) diunggah ke bucket Supabase Storage **`surat-tugas`**, dan tautannya bisa dibuka admin dari tabel request untuk dicetak.
-
-Kenapa Supabase Storage (bukan Google Drive): service account Google tidak punya kuota Drive pribadi, sedangkan OAuth Google untuk akun personal sekarang mewajibkan privacy policy URL publik untuk bisa di-publish. Supabase sudah dipakai proyek ini, jadi tidak ada kredensial tambahan.
-
-**Setup (sekali):**
+Form tamu bisa menerima PDF maks. 4 MB yang disimpan di bucket Supabase Storage **`surat-tugas`**.
 
 ```bash
-npm run storage:setup
+cd backend && npm run storage:setup
 ```
 
-Perintah ini membuat bucket `surat-tugas` yang public, hanya menerima PDF, dengan batas 4 MB. Aman dijalankan berulang kali.
+Jalankan juga `database/migrations/20261120000000_add_surat_tugas_columns.sql` di SQL Editor, lalu restart backend. `SURAT_TUGAS_EMAIL` di `.env` adalah alamat tujuan yang ditampilkan ke tamu; nilai awalnya `rubikesper@gmail.com`, cukup diganti saat email sekolah sudah tersedia.
 
-**Migration database:** jalankan `database/migrations/20261120000000_add_surat_tugas_columns.sql` di Supabase SQL Editor supaya tautan tersimpan di tabel request, lalu restart backend.
+### Scan QR / barcode tamu
 
-`SURAT_TUGAS_EMAIL` di `.env` adalah alamat tujuan yang dicatat pada berkas dan ditampilkan ke tamu. Nilainya **sementara** `rubikesper@gmail.com`; cukup ubah di `.env` lalu restart backend saat email sekolah sudah tersedia — tidak perlu mengubah kode.
+Setelah tamu mengirim form, halaman sukses menampilkan barcode + QR berisi `REQ-xxx`. Petugas memindainya lewat menu **Scan Tamu** di HP; hasilnya muncul sebagai notifikasi + bunyi di komputer admin dan tercatat di tabel `scan_logs`.
 
-Form tetap bisa dipakai **tanpa** file. Jika migration belum dijalankan, request tetap terkirim dan tautan tetap ditampilkan ke tamu, tetapi belum tersimpan di database.
+- Jalankan `database/migrations/20261120000001_create_scan_logs.sql`.
+- Kamera browser hanya jalan lewat **HTTPS** atau `localhost` (bukan `http://192.168.x.x`).
+- Data pribadi tamu tidak disimpan di `scan_logs`; detail diambil lewat backend yang wajib login.
 
----
+### Notifikasi browser (Web Push)
 
-## Lisensi
+Notifikasi dikirim ke browser admin walau dashboard sedang tidak dibuka. Pesan muncul saat tamu mendaftar dan saat status berubah menjadi **Diterima / Ditolak / Selesai**. Notifikasi ini **tidak memakai nomor WhatsApp sekolah**, jadi tidak ada risiko pembatasan akun.
 
-PeTa SKANIDA — SMKN 2 Kota Magelang.
+**Apa itu kunci VAPID dan dari mana asalnya?**
 
----
+VAPID (*Voluntary Application Server Identification*) adalah pasangan kunci yang dipakai Web Push untuk mengenali **siapa pengirim notifikasinya**.
 
-## 13. Fitur Scan QR (HP → Notifikasi di Laptop Admin)
+| Kunci | Fungsi | Boleh dibagikan? |
+|---|---|---|
+| `VAPID_PUBLIC_KEY` | Diberikan ke browser saat admin mengaktifkan notifikasi, lalu diteruskan ke layanan push (Google/Chromium, Mozilla, Apple) agar langganan terkait dengan aplikasi sekolah | **Ya** — memang dikirim ke browser |
+| `VAPID_PRIVATE_KEY` | Dipakai backend untuk **menandatangani** setiap pesan. Layanan push menolak pesan bila tanda tangannya tidak cocok dengan public key | **Tidak** — rahasia, hanya di `backend/.env` |
+| `VAPID_SUBJECT` | Alamat kontak admin (format `mailto:...`) yang ikut dikirim ke layanan push | Ya |
 
-Petugas memindai QR/barcode tiket tamu memakai kamera HP. Hasilnya langsung
-muncul sebagai **notifikasi + bunyi** di laptop/komputer admin, dan tercatat di
-menu **Scan Tamu**.
+Keduanya **sepasang** dan dibuat lokal, bukan dari WA/Supabase, serta tidak perlu pendaftaran berbayar. Cara membuatnya:
 
-**Alur:**
+```bash
+cd backend
+npm run push:keys
+```
 
-1. Tamu mengisi form → halaman sukses menampilkan **barcode + QR code** (isinya `REQ-xxx`). Tombol unduh menyimpan keduanya dalam satu gambar tiket.
-2. Petugas login admin di **HP**, buka menu **Scan Tamu**, tekan **Aktifkan Kamera**, lalu arahkan ke QR/barcode tamu.
-3. Backend (`POST /api/scans`) memeriksa status tamu (Diterima / Pending / Ditolak / Selesai / tidak dikenal) dan menyimpannya ke tabel `scan_logs`.
-4. Laptop admin yang sedang membuka dashboard menerima perubahan lewat Supabase Realtime (cadangan: polling 6 detik) → pop-up di kanan atas + bunyi.
+Perintah itu mencetak kedua kunci; salin ke `backend/.env`. Kunci sudah dibuat di environment ini — tidak perlu dibuat lagi kecuali ingin menggantinya.
 
-**Yang perlu dilakukan sekali:**
+> ⚠️ Jika kunci diganti, langganan di browser lama menjadi tidak valid. Admin perlu membuka dashboard dan mengklik **lonceng** lagi untuk mendaftar ulang. Simpan kunci yang sudah ada dengan baik.
 
-- Jalankan `database/migrations/20261120000001_create_scan_logs.sql` di Supabase SQL Editor (atau `schema.sql` untuk database baru).
-- Di folder `frontend` jalankan `npm install` (ada paket baru: `qrcode`, `html5-qrcode`).
+**Setup notifikasi (sekali):**
 
-**Catatan penting:**
+1. Pastikan `VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` terisi di `backend/.env` (cara membuat ada di atas).
+2. Jalankan `database/migrations/20261121000000_create_push_subscriptions.sql` di SQL Editor, lalu restart backend.
+3. Buka dashboard di **HTTPS** (atau `localhost`), klik **ikon lonceng** di header, izinkan notifikasi.
 
-- Kamera browser **hanya jalan lewat HTTPS** (atau `localhost`). Saat testing dari HP lewat Wi-Fi lokal (`http://192.168.x.x`), kamera akan diblokir; gunakan versi yang sudah di-deploy (Vercel) atau tunnel HTTPS seperti ngrok/cloudflared.
-- Scan dari HP tidak memunculkan pop-up di HP itu sendiri, hanya di perangkat lain yang membuka dashboard.
-- Tabel `scan_logs` sengaja tidak menyimpan data pribadi; detail tamu diambil lewat backend yang wajib login admin.
+Klik **Lihat data** pada notifikasi: aplikasi langsung membuka halaman yang benar dan **menyorot barisnya** selama beberapa detik.
 
----
+> **Tentang storage:** notifikasi tidak menyimpan isi pesan di database. Yang tersimpan hanya satu baris subscription per perangkat (endpoint + kunci enkripsi).
 
-## 14. Notifikasi WhatsApp ke Admin (Fonnte)
+Jika izin push ditolak, notifikasi tetap muncul di dalam dashboard (cadangan pengecekan tiap 15 detik).
 
-Setiap kali ada **tamu mengisi form reservasi**, admin mendapat pesan WhatsApp berisi
-nama, tujuan, keperluan, tanggal, jumlah tamu, dan kontak tamu. Notifikasi juga dikirim
-saat admin mengubah status menjadi **Diterima**, **Ditolak**, atau **Selesai**.
+### Ekspor & cetak riwayat
 
-**Yang perlu dilakukan sekali:**
+Tombol **Ekspor & Cetak** di halaman Riwayat Kunjungan menyediakan:
 
-1. Daftar di <https://fonnte.com> dan ambil token API-nya.
-2. Tambahkan baris ini ke `backend/.env`:
+- **Lihat Web** — halaman laporan rapi di tab baru, lengkap dengan tombol Cetak/Simpan PDF.
+- **Excel (.xlsx)** — file Excel asli.
+- **CSV (.csv)** — UTF-8, aman untuk huruf Indonesia.
 
-   ```env
-   FONNTE_TOKEN=token_dari_fonnte
-   WHATSAPP_NOTIFY_NUMBERS=081234567890,081987654321
-   ```
-
-   *(Ganti nomor dengan nomor admin. Boleh lebih dari satu, dipisah koma.)*
-
-3. Restart backend, lalu coba kirim pesan uji:
-
-   ```bash
-   cd backend
-   npm run wa:test
-   ```
-
-**Catatan:** token Fonnte **rahasia** dan hanya boleh di `backend/.env`, jangan pernah
-ditaruh di frontend atau di-commit. Jika token/nomor belum diisi, aplikasi tetap normal —
-cuma notifikasinya yang tidak dikirim. Detail kesalahan bisa dilihat di konsol backend.
-
-Kanal WhatsApp **tidak aktif secara default** (`NOTIFY_CHANNELS=push`) agar nomor
-sekolah tidak dipakai otomatis. Aktifkan dengan `NOTIFY_CHANNELS=whatsapp` atau
-`NOTIFY_CHANNELS=push,whatsapp`.
+Ekspor mengikuti filter/pencarian yang sedang aktif dan hanya muncul untuk akun dengan fitur **Cetak Riwayat**.
 
 ---
 
-## 15. Notifikasi Browser & Ekspor Riwayat
+## 16. Lisensi
 
-### Notifikasi tanpa WhatsApp
-
-Notifikasi kini bisa dikirim langsung ke **browser admin** (Web Push), jadi tidak
-perlu nomor WhatsApp sekolah dan tidak ada risiko ban. Pesan muncul walau dashboard
-sedang tidak dibuka, selama browser mengizinkan notifikasi.
-
-**Setup sekali:**
-
-1. Kunci VAPID sudah dibuat di `backend/.env` (`npm run push:keys` untuk membuat yang baru).
-2. Jalankan di Supabase SQL Editor:
-   `database/migrations/20261121000000_create_push_subscriptions.sql`
-3. Restart backend, buka dashboard di **HTTPS** (atau `localhost`), lalu klik
-   ikon **lonceng** di header dan izinkan notifikasi.
-
-Notifikasi dikirim saat tamu mendaftar dan saat status berubah menjadi Diterima /
-Ditolak / Selesai. Jika izin push ditolak, tetap ada notifikasi di dalam dashboard
-(dengan cadangan pengecekan tiap 15 detik).
-
-> **Soal storage:** notifikasi tidak disimpan di database. Yang tersimpan hanya
-> satu baris subscription per perangkat (endpoint + kunci enkripsi) di tabel
-> `push_subscriptions`. Isi pesan tidak pernah disimpan.
-
-### Ekspor Riwayat Kunjungan
-
-Tombol **Ekspor & Cetak** di halaman Riwayat Kunjungan menyediakan tiga pilihan:
-
-- **Lihat Web** — membuka halaman laporan rapi di tab baru, lengkap dengan tombol
-  Cetak / Simpan PDF.
-- **Excel (.xlsx)** — file Excel asli, tanpa perlu membuka browser dulu.
-- **CSV (.csv)** — UTF-8 (didukung Excel, karakter Indonesia tidak rusak).
-
-Semua ekspor mengikuti filter/pencarian yang sedang aktif. Tombol ini muncul untuk
-akun yang memiliki fitur **Cetak Riwayat**.
+PeTa SKANIDA — SMKN 2 Kota Magelang. Dibangun untuk mempermudah pendataan kunjungan tamu sekolah.

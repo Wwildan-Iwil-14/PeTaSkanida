@@ -16,16 +16,6 @@ const toList = value =>
     .map(item => item.trim())
     .filter(Boolean)
 
-// Notifikasi WhatsApp (gateway Fonnte). Keduanya harus diisi agar aktif:
-// token pengirim dan daftar nomor admin penerima (dipisah koma).
-const whatsappToken = (process.env.FONNTE_TOKEN || '').trim()
-const whatsappTargets = toList(process.env.WHATSAPP_NOTIFY_NUMBERS)
-
-// Kanal notifikasi yang dipakai: push (browser), whatsapp (Fonnte), atau keduanya.
-// Default hanya "push" agar nomor WhatsApp sekolah tidak dipakai otomatis.
-const notificationChannels = toList(process.env.NOTIFY_CHANNELS || 'push').map(channel =>
-  channel.trim().toLowerCase(),
-)
 const nodeEnv = process.env.NODE_ENV || 'development'
 
 export const config = {
@@ -54,14 +44,7 @@ export const config = {
   // cukup ganti nilai ini di .env saat email sekolah sudah tersedia.
   suratTugasEmail: (process.env.SURAT_TUGAS_EMAIL || 'rubikesper@gmail.com').trim(),
 
-  // ===== Notifikasi WhatsApp via Fonnte =====
-  whatsappToken,
-  whatsappTargets,
-  whatsappCountryCode: (process.env.FONNTE_COUNTRY_CODE || '62').trim(),
-  whatsappApiUrl: (process.env.FONNTE_API_URL || 'https://api.fonnte.com/send').trim(),
-
   // ===== Notifikasi Web Push (browser) =====
-  notificationChannels,
   vapidPublicKey: (process.env.VAPID_PUBLIC_KEY || '').trim(),
   vapidPrivateKey: (process.env.VAPID_PRIVATE_KEY || '').trim(),
   vapidSubject: (process.env.VAPID_SUBJECT || 'mailto:admin@petaskanida.sch.id').trim(),

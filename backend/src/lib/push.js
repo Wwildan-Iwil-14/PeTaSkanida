@@ -1,7 +1,8 @@
 import webpush from 'web-push'
 import { config } from '../config.js'
 import { supabase } from './supabase.js'
-import { requestCode } from './whatsapp.js'
+
+const requestCode = id => `REQ-${String(id ?? '').padStart(3, '0')}`
 
 // Notifikasi Web Push dikirim ke browser admin yang sudah berlangganan.
 // subscription disimpan di tabel push_subscriptions (hanya backend yang bisa

@@ -1,10 +1,10 @@
-# PeTa SKANIDA — Frontend
+# PeTa SKANIDA — Frontend (Tampilan Web)
 
-Frontend adalah **tampilan aplikasi** yang dibuka di browser. Di sinilah tamu mengisi form, dan admin mengelola permintaan kunjungan.
+Frontend adalah **tampilan aplikasi** yang dibuka di browser. Di sini **tamu** mengisi form kunjungan ke **SMKN 2 Kota Magelang**, dan **admin/petugas** mengelola data kunjungan tersebut.
 
-Dibangun dengan **React + Vite** dan **Tailwind CSS**.
+Dibangun dengan **React + Vite** dan **Tailwind CSS**. Tampilannya dibuat responsif supaya nyaman dipakai di HP, tablet, dan laptop.
 
-> Frontend butuh **backend yang sedang berjalan** untuk mengirim dan mengambil data.
+> Frontend membutuhkan **backend yang sedang berjalan** untuk mengirim dan mengambil data.
 
 ---
 
@@ -15,25 +15,28 @@ Dibangun dengan **React + Vite** dan **Tailwind CSS**.
 3. [Buat & Isi File `.env`](#3-buat--isi-file-env)
 4. [Menjalankan Frontend](#4-menjalankan-frontend)
 5. [Membuka Aplikasi](#5-membuka-aplikasi)
-6. [Isi Folder](#6-isi-folder)
-7. [Mode Produksi (Build)](#7-mode-produksi-build)
-8. [Pemecahan Masalah](#8-pemecahan-masalah)
+6. [Yang Bisa Dilakukan](#6-yang-bisa-dilakukan)
+7. [Notifikasi & Sorotan Data](#7-notifikasi--sorotan-data)
+8. [Isi Folder](#8-isi-folder)
+9. [Mode Produksi (Build)](#9-mode-produksi-build)
+10. [Pemecahan Masalah](#10-pemecahan-masalah)
+11. [Lisensi](#11-lisensi)
 
 ---
 
 ## 1. Yang Dibutuhkan
 
-- **Node.js 18+** (cek dengan perintah `node -v`)
-- **Backend sudah berjalan** di `http://localhost:3001` (lihat [`../backend/README.md`](../backend/README.md))
+- **Node.js 18+** (cek: `node -v`)
+- **Backend sudah berjalan** di `http://localhost:3001` — lihat [`../backend/README.md`](../backend/README.md)
 - **Dua nilai dari Supabase** (Project Settings → API): **Project URL** dan **anon key**
 
-> Anon key **aman** dipakai di browser. Jangan pernah memakai service_role key di sini.
+> Anon key **aman** dipakai di browser. **Jangan pernah** memakai service_role key di sini.
 
 ---
 
 ## 2. Install Kebutuhan
 
-Dari folder utama `Peta-skanida`:
+Dari folder utama `PeTaSkanida`:
 
 ```bash
 cd frontend
@@ -42,29 +45,16 @@ npm install
 
 Cukup dijalankan sekali, atau saat ada library baru.
 
-> Folder `node_modules` dihasilkan oleh `npm install` dan **tidak disimpan di Git**. Aman dihapus kapan saja; jalankan `npm install` lagi untuk membuatnya kembali. Jangan menyalin folder ini dari komputer lain — beda sistem operasi bisa menyebabkan error Rollup/esbuild.
+> `node_modules` tidak disimpan di Git dan aman dihapus. Jangan menyalinnya dari komputer/OS lain — bisa menyebabkan error Rollup/esbuild.
 
 ---
 
 ## 3. Buat & Isi File `.env`
 
-### Buat file dari contoh
+**Windows:** `copy .env.example .env`  
+**Mac/Linux:** `cp .env.example .env`
 
-**Windows (PowerShell/CMD):**
-
-```powershell
-copy .env.example .env
-```
-
-**Mac/Linux:**
-
-```bash
-cp .env.example .env
-```
-
-> Catatan: sebagian panduan lama menyebut `.env.local`. Di projek ini file yang dipakai adalah **`.env`**. Jangan membuat keduanya dengan isi yang berbeda.
-
-### Isi `frontend/.env`
+Isi `frontend/.env`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3001/api
@@ -74,19 +64,19 @@ VITE_SUPABASE_ANON_KEY=TEMPEL-ANON-KEY
 
 | Variabel | Fungsi |
 |---|---|
-| `VITE_API_BASE_URL` | Alamat backend. Untuk pemakaian lokal biarkan `http://localhost:3001/api` |
-| `VITE_SUPABASE_URL` | Project URL Supabase (dipakai untuk update real-time) |
+| `VITE_API_BASE_URL` | Alamat backend. Lokal: `http://localhost:3001/api` |
+| `VITE_SUPABASE_URL` | Project URL Supabase (untuk update real-time) |
 | `VITE_SUPABASE_ANON_KEY` | Anon key (boleh dipakai di browser) |
 
-> **Tips:** simpan sebagai **UTF-8 tanpa BOM** dan tanpa tanda kutip di sekitar nilai.
+> **Tips:** simpan sebagai **UTF-8 tanpa BOM**, tanpa tanda kutip di sekitar nilai. Variabel `VITE_` hanya dibaca saat build/dev dimulai, jadi restart setelah mengubah `.env`.
 
-Jika `VITE_SUPABASE_URL` atau anon key kosong/salah, halaman akan menampilkan error "Konfigurasi Supabase".
+Jika Supabase URL/anon key kosong atau salah, muncul pesan error "Konfigurasi Supabase".
 
 ---
 
 ## 4. Menjalankan Frontend
 
-Pastikan **backend sudah jalan lebih dulu** di terminal lain. Lalu:
+Pastikan backend sudah jalan di terminal lain, lalu:
 
 ```bash
 npm run dev
@@ -95,64 +85,117 @@ npm run dev
 Jika berhasil:
 
 ```
-VITE v6.x.x  ready
+VITE v6.x.x ready
 ➜  Local:   http://localhost:5173/
 ```
 
-Biarkan terminal tetap terbuka. Buka alamat tersebut di browser.
+Biarkan terminal tetap terbuka.
 
 ---
 
 ## 5. Membuka Aplikasi
 
-Buka: **<http://localhost:5173/>**
+Buka **<http://localhost:5173/>**. Halaman awal menyediakan dua pilihan:
 
-Halaman awal menyediakan dua pilihan:
-
-- **Tamu** → isi form permintaan kunjungan.
+- **Tamu** → mengisi form permintaan kunjungan.
 - **Admin / Pengelola** → login untuk mengelola.
 
 ### Akun admin
 
-Login admin menggunakan **email** dan **password** yang dibuat lewat skrip backend `npm run admin:create`:
+Login memakai email + password yang dibuat lewat `npm run admin:create` di backend:
 
 | Email | Password |
 |---|---|
 | `admin@skanida.sch.id` | `admin123` *(atau password yang kamu buat)* |
 
-Ganti password setelah login pertama (lihat [`../database/README.md`](../database/README.md)).
-
-### Yang bisa dilakukan admin
-
-- **Dashboard** — ringkasan jumlah request: menunggu, diterima, dan ditolak.
-- **Daftar Request** — setujui atau tolak permintaan yang masih *Pending*.
-- **Kelola Tamu** — lihat tamu yang sudah diproses, hubungi lewat WhatsApp.
-- **Riwayat Kunjungan** — arsip semua permintaan yang sudah diproses.
-- Data **update otomatis** (real-time) ketika ada permintaan baru masuk.
-- **Ikon lonceng** di header — aktifkan/matikan notifikasi browser (Web Push)
-  untuk perangkat ini. Perlu HTTPS (localhost juga boleh) dan izin browser.
-- **Riwayat Kunjungan** — tombol **Ekspor & Cetak** menyediakan
-  **Lihat Web** (cetak/PDF), **Excel (.xlsx)**, dan **CSV (.csv)**. Semua mengikuti
-  filter yang sedang aktif.
+Ganti password setelah login pertama — lihat [`../database/README.md`](../database/README.md).
 
 ---
 
-## 6. Isi Folder
+## 6. Yang Bisa Dilakukan
+
+### Untuk tamu
+
+- Mengisi form kunjungan: nama/instansi, email, no. HP, tujuan, keperluan, tanggal, jam, jumlah tamu.
+- Menambahkan **Surat Tugas** (PDF opsional, maks. 4 MB).
+- Mendapat **tiket QR + barcode** berisi kode `REQ-xxx` setelah form terkirim; tiket bisa diunduh.
+
+### Untuk admin & petugas
+
+| Menu | Fungsi |
+|---|---|
+| **Dashboard** | Ringkasan request menunggu, diterima, dan ditolak |
+| **Daftar Request** | Setujui / tolak permintaan Pending |
+| **Kelola Tamu** | Lihat tamu diproses, hubungi WhatsApp, tandai sudah dihubungi, klik **Selesai** |
+| **Kunjungan Terkini / Mendatang** | Pantau jadwal & tamu aktif |
+| **Riwayat Kunjungan** | Arsip kunjungan, pencarian, filter, ekspor |
+| **Scan Tamu** | Pemindaian QR/barcode pakai kamera HP |
+| **Kelola Akun** | Tambah/edit/hapus admin & petugas (super admin) |
+| **Database** | Statistik, backup data, bersihkan log scan lama |
+| **Akun Saya** | Profil & daftar fitur yang dimiliki |
+
+### Ekspor riwayat
+
+Tombol **Ekspor & Cetak** di halaman Riwayat Kunjungan menyediakan:
+
+- **Lihat Web** — laporan rapi di tab baru + tombol Cetak/Simpan PDF.
+- **Excel (.xlsx)** — file Excel asli.
+- **CSV (.csv)** — UTF-8, aman untuk karakter Indonesia.
+
+Ekspor mengikuti filter/pencarian yang sedang aktif dan hanya muncul untuk akun dengan fitur **Cetak Riwayat**.
+
+---
+
+## 7. Notifikasi & Sorotan Data
+
+### Notifikasi browser
+
+Klik **ikon lonceng** di header dashboard untuk mengaktifkan notifikasi pada perangkat ini. Perlu **HTTPS** (atau `localhost`) dan izin browser. Notifikasi dikirim saat:
+
+- tamu mengirim form baru;
+- status berubah menjadi **Diterima**, **Ditolak**, atau **Selesai**.
+
+Notifikasi juga tetap muncul **di dalam dashboard** (pojok kanan atas) walau izin push ditolak. Data diperbarui otomatis lewat Supabase Realtime, dengan cadangan pengecekan tiap 15 detik.
+
+> Kunci yang dipakai pengiriman bernama **VAPID** (`VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY`). Kunci dibuat di backend dengan `npm run push:keys` dan disimpan di `backend/.env`. Penjelasan lengkapnya ada di [`../backend/README.md`](../backend/README.md#kunci-vapid-apa-dan-dari-mana).
+
+### Sorotan dari notifikasi
+
+Klik **Lihat data** pada notifikasi:
+
+1. Aplikasi membuka halaman yang tepat (Pending → Daftar Request, Diterima → Kelola Tamu, Ditolak/Selesai → Riwayat).
+2. Halaman di-scroll ke baris tersebut.
+3. Baris **disorot** dengan warna + garis indigo selama beberapa detik supaya mudah ditemukan.
+
+### Catatan performa
+
+Agar aplikasi tetap ringan saat data banyak:
+
+- kolom sekunder otomatis disembunyikan di layar kecil;
+- pencarian di-debounce 150 ms;
+- tabel tidak di-render ulang bila isi data tidak berubah.
+
+---
+
+## 8. Isi Folder
 
 ```
 frontend/
 ├── src/
-│   ├── App.jsx            # seluruh halaman: login, form tamu, dashboard admin
+│   ├── App.jsx            # halaman tamu & seluruh dashboard admin
 │   ├── main.jsx           # titik mulai React
+│   ├── ScanPage.jsx       # pemindai QR/barcode + alert scan
 │   ├── lib/
-│   │   ├── api.js         # penghubung ke backend (REST)
-│   │   ├── realtime.js    # langganan update real-time dari Supabase
-│   │   ├── push.js        # langganan notifikasi Web Push browser
-│   │   ├── export.js      # ekspor XLSX / CSV / tampilan web riwayat
-│   │   └── supabaseClient.js
+│   │   ├── api.js         # klien REST ke backend
+│   │   ├── realtime.js    # langganan perubahan Supabase
+│   │   ├── push.js        # langganan notifikasi Web Push
+│   │   ├── export.js      # ekspor XLSX / CSV / tampilan web
+│   │   ├── supabaseClient.js
+│   │   ├── barcode.js
+│   │   └── qr.js
 │   ├── assets/            # gambar/aset
-│   └── index.css          # gaya global (Tailwind)
-├── public/                # file publik (logo, sw.js service worker)
+│   └── index.css          # gaya global Tailwind + cetak + sorotan baris
+├── public/                # file publik (logo, favicon, sw.js)
 ├── index.html
 ├── vite.config.js
 ├── tailwind.config.js
@@ -161,36 +204,35 @@ frontend/
 
 ---
 
-## 7. Mode Produksi (Build)
-
-Untuk menaruh aplikasi di server atau hosting:
+## 9. Mode Produksi (Build)
 
 ```bash
-npm run build     # hasil ada di folder frontend/dist
-npm run preview   # mencoba hasil build secara lokal
+npm run build     # hasil di frontend/dist
+npm run preview   # coba hasil build secara lokal
 ```
 
-Unggah isi folder `frontend/dist` ke hosting statis (misalnya Netlify, Vercel, Cloudflare Pages).
-Saat deploy, isi variabel environment (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) di platform hosting, lalu **build ulang**.
+Unggah isi `frontend/dist` ke hosting statis (Vercel, Netlify, Cloudflare Pages, dll). Saat deploy, isi variabel environment (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) di platform hosting, lalu **build ulang**.
 
-> Variabel `VITE_` hanya dibaca saat build. Jika kamu mengubah `.env`, jalankan lagi `npm run build`.
+> Untuk notifikasi browser, pastikan hosting memakai **HTTPS** dan file `sw.js` ikut terdeploy di root.
 
 ---
 
-## 8. Pemecahan Masalah
+## 10. Pemecahan Masalah
 
 | Gejala | Penyebab | Solusi |
 |---|---|---|
-| `Tidak dapat terhubung ke backend` | Backend belum jalan | Jalankan backend (`npm run dev` di folder `backend`) |
-| Halaman error "Konfigurasi Supabase" | `.env` kosong/salah | Isi `VITE_SUPABASE_URL` & `VITE_SUPABASE_ANON_KEY`, lalu restart `npm run dev` |
+| `Tidak dapat terhubung ke backend` | Backend belum jalan | Jalankan backend di folder `backend` |
+| Error "Konfigurasi Supabase" | `.env` kosong/salah | Isi URL & anon key, lalu restart `npm run dev` |
 | Login gagal | Backend/database bermasalah | Cek backend; pastikan `schema.sql` sudah dijalankan |
-| Perubahan `.env` tidak berlaku | Vite perlu restart | Hentikan (Ctrl+C), lalu jalankan `npm run dev` lagi |
-| Styling tidak muncul | Tailwind belum termuat | Pastikan `src/index.css` di-import di `main.jsx` |
-| `npm install` gagal | Cache/internet bermasalah | Jalankan `npm cache clean --force`, lalu `npm install` |
-| Build berhasil tapi data kosong di hosting | Env belum diisi saat build | Isi env di hosting, lalu build ulang |
+| `.env` tidak berlaku | Vite perlu restart | Ctrl+C lalu `npm run dev` lagi |
+| Styling tidak muncul | CSS belum ter-import | Pastikan `src/index.css` di-import di `main.jsx` |
+| Ikon lonceng abu / tidak bisa diklik | Browser tidak mendukung push atau bukan HTTPS | Gunakan Chrome/Edge/Firefox terbaru lewat HTTPS/localhost |
+| Notifikasi tidak muncul | Migration `push_subscriptions` belum dijalankan | Jalankan migration di Supabase SQL Editor, restart backend |
+| Kamera scan tidak aktif | Kamera butuh HTTPS | Deploy ke HTTPS atau gunakan tunnel HTTPS |
+| Build sukses tapi data kosong | Env belum diisi saat build | Isi env di hosting lalu build ulang |
 
 ---
 
-## Lisensi
+## 11. Lisensi
 
-PeTa SKANIDA — SMKN 2 Kota Magelang.
+PeTa SKANIDA — SMKN 2 Kota Magelang. Dibangun untuk mempermudah pendataan kunjungan tamu sekolah.
