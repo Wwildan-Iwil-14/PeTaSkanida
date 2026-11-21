@@ -1,6 +1,22 @@
 import webpush from 'web-push'
 import { config } from '../config.js'
 import { supabase } from './supabase.js'
+import { resolveFeatures } from './features.js'
+
+// Fitur yang membuat sebuah akun berhak menerima notifikasi tertentu.
+const REQUEST_FEATURES = ['request']
+const HISTORY_FEATURES = [
+  'riwayat_admin',
+  'riwayat_superadmin',
+  'riwayat',
+  'tamu_admin',
+  'tamu_superadmin',
+  'tamu',
+]
+
+export function canReceiveNotifications(features = []) {
+  return [...REQUEST_FEATURES, ...HISTORY_FEATURES].some(feature => features.includes(feature))
+}
 
 const requestCode = id => `REQ-${String(id ?? '').padStart(3, '0')}`
 
@@ -36,24 +52,55 @@ function formatDate(value) {
 }
 
 /**
- * Kirim satu notifikasi ke semua perangkat yang terdaftar.
- * Tidak pernah melempar error: kegagalan push tidak boleh mengganggu request.
+ * Ambil subscription yang pemilik akunnya punya fitur terkait notifikasi.
+ * Akun tanpa akses menu yang bersangkutan tidak boleh menerima notifikasi.
  */
-export async function sendPush({ title, body, tag = 'peta-skanida' }) {
-  if (!isPushEnabled() || !setupVapid()) {
-    console.warn('[push] VAPID key belum diisi; notifikasi browser dilewati.')
-    return { skipped: true }
-  }
-
+async function eligibleSubscriptions(requiredFeatures) {
   const { data: rows, error } = await supabase
     .from('push_subscriptions')
     .select('id, subscription, admin_user_id')
 
   if (error) {
     console.warn(`[push] Gagal memuat subscription: ${error.message}`)
-    return { sent: 0, total: 0 }
+    return []
   }
-  if (!rows?.length) return { sent: 0, total: 0 }
+  if (!rows?.length) return []
+  if (!requiredFeatures?.length) return rows
+
+  const userIds = [...new Set(rows.map(row => row.admin_user_id).filter(Boolean))]
+  if (!userIds.length) return []
+
+  const { data: profiles, error: profileError } = await supabase
+    .from('admins')
+    .select('user_id, role, features')
+    .in('user_id', userIds)
+
+  if (profileError) {
+    console.warn(`[push] Gagal memuat profil penerima: ${profileError.message}`)
+    return []
+  }
+
+  const byUser = new Map((profiles || []).map(profile => [profile.user_id, profile]))
+  return rows.filter(row => {
+    const profile = byUser.get(row.admin_user_id)
+    if (!profile) return false
+    const features = resolveFeatures(profile.role, profile.features)
+    return requiredFeatures.some(feature => features.includes(feature))
+  })
+}
+
+/**
+ * Kirim satu notifikasi ke perangkat yang berhak menerimanya.
+ * Tidak pernah melempar error: kegagalan push tidak boleh mengganggu request.
+ */
+export async function sendPush({ title, body, tag = 'peta-skanida', requiredFeatures = [] }) {
+  if (!isPushEnabled() || !setupVapid()) {
+    console.warn('[push] VAPID key belum diisi; notifikasi browser dilewati.')
+    return { skipped: true }
+  }
+
+  const rows = await eligibleSubscriptions(requiredFeatures)
+  if (!rows.length) return { sent: 0, total: 0 }
 
   const payload = JSON.stringify({
     title,
@@ -96,6 +143,7 @@ export async function notifyNewRequest(request = {}) {
     title: 'Permintaan kunjungan baru',
     body: `${request.nama || '-'} · ${request.tujuan || '-'} · ${formatDate(request.tanggal)} (${requestCode(request.id)})`,
     tag: `new-request-${request.id ?? ''}`,
+    requiredFeatures: REQUEST_FEATURES,
   })
 }
 
@@ -110,5 +158,6 @@ export async function notifyStatusChange(request = {}, status) {
     title: STATUS_TITLES[status] || 'Status kunjungan berubah',
     body: `${requestCode(request.id)} · ${request.nama || '-'} · ${formatDate(request.tanggal)}`,
     tag: `status-${request.id ?? ''}-${status}`,
+    requiredFeatures: status === 'Selesai' ? HISTORY_FEATURES : REQUEST_FEATURES,
   })
 }

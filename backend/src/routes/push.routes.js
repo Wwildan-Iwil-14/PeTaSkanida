@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase.js'
 import { asyncHandler } from '../lib/asyncHandler.js'
 import { httpError } from '../lib/httpError.js'
 import { requireAdmin } from '../middleware/auth.js'
-import { isPushEnabled } from '../lib/push.js'
+import { isPushEnabled, canReceiveNotifications } from '../lib/push.js'
 
 const router = Router()
 
@@ -28,6 +28,10 @@ router.post(
 
     if (typeof endpoint !== 'string' || !endpoint.startsWith('https://') || !p256dh || !auth) {
       throw httpError(422, 'Data subscription browser tidak valid.')
+    }
+
+    if (!canReceiveNotifications(req.admin.features || [])) {
+      throw httpError(403, 'Akun ini tidak memiliki fitur yang memerlukan notifikasi.')
     }
 
     const { error } = await supabase.from('push_subscriptions').upsert(

@@ -36,6 +36,23 @@ const CS_WHATSAPP_MESSAGE = (import.meta.env.VITE_CS_WHATSAPP_MESSAGE || '').tri
 const SURAT_TUGAS_MAX_SIZE = 4 * 1024 * 1024
 const SURAT_TUGAS_ACCEPT = '.pdf,application/pdf'
 
+// Fitur yang menentukan apakah sebuah akun boleh menerima notifikasi.
+const NOTIFY_REQUEST_FEATURES = ['request']
+const NOTIFY_HISTORY_FEATURES = [
+  'riwayat_admin', 'riwayat_superadmin', 'riwayat',
+  'tamu_admin', 'tamu_superadmin', 'tamu',
+]
+
+function canReceiveNotifications(features = []) {
+  return [...NOTIFY_REQUEST_FEATURES, ...NOTIFY_HISTORY_FEATURES]
+    .some(feature => features.includes(feature))
+}
+
+function canNotifyStatus(features = [], status) {
+  const allowed = status === 'Selesai' ? NOTIFY_HISTORY_FEATURES : NOTIFY_REQUEST_FEATURES
+  return allowed.some(feature => features.includes(feature))
+}
+
 const CARD = 'rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
 const FIELD = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
 
@@ -1071,6 +1088,90 @@ function Panel({ title, subtitle, action, children }) {
   )
 }
 
+// ---- Pagination tabel ----
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 0] // 0 = tampilkan semua
+
+function pageNumbers(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1)
+  const pages = new Set([1, total, current - 1, current, current + 1])
+  const sorted = [...pages].filter(page => page >= 1 && page <= total).sort((a, b) => a - b)
+  const result = []
+  sorted.forEach((page, index) => {
+    if (index > 0 && page - sorted[index - 1] > 1) result.push(`gap-${page}`)
+    result.push(page)
+  })
+  return result
+}
+
+function useTablePaging(items, { defaultSize = 10, resetKey = '', highlightId = '' } = {}) {
+  const [perPage, setPerPage] = useState(defaultSize)
+  const [page, setPage] = useState(1)
+  const total = items.length
+  const totalPages = perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : 1
+
+  useEffect(() => {
+    setPage(1)
+  }, [resetKey, perPage])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
+
+  // Bila notifikasi menyorot baris yang ada di halaman lain, buka halamannya.
+  useEffect(() => {
+    if (!highlightId || perPage <= 0) return
+    const index = items.findIndex(item => item.id === highlightId)
+    if (index >= 0) setPage(Math.floor(index / perPage) + 1)
+  }, [highlightId, perPage])
+
+  const pageItems = perPage > 0 ? items.slice((page - 1) * perPage, page * perPage) : items
+  return { page, setPage, perPage, setPerPage, total, totalPages, pageItems }
+}
+
+function TablePaging({ paging }) {
+  const { page, setPage, perPage, setPerPage, total, totalPages } = paging
+  if (!total) return null
+  const start = perPage > 0 ? (page - 1) * perPage + 1 : 1
+  const end = perPage > 0 ? Math.min(page * perPage, total) : total
+  return (
+    <div className="no-print flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:px-6">
+      <p>
+        Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{start}–{end}</span> dari{' '}
+        <span className="font-semibold text-slate-700 dark:text-slate-200">{total}</span> data
+      </p>
+      <label className="flex items-center gap-2">
+        Tampilkan
+        <select
+          value={perPage}
+          onChange={event => setPerPage(Number(event.target.value))}
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+        >
+          {PAGE_SIZE_OPTIONS.map(size => (
+            <option key={size} value={size}>{size === 0 ? 'Semua' : size}</option>
+          ))}
+        </select>
+      </label>
+      {perPage > 0 && totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman sebelumnya">‹</button>
+          {pageNumbers(page, totalPages).map(item => typeof item === 'number' ? (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setPage(item)}
+              className={`min-w-[32px] rounded-lg px-2 py-1.5 font-semibold transition ${item === page ? 'bg-indigo-500 text-white' : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'}`}
+            >
+              {item}
+            </button>
+          ) : <span key={item} className="px-1 text-slate-400">…</span>)}
+          <button type="button" onClick={() => setPage(current => Math.min(totalPages, current + 1))} disabled={page === totalPages} className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800" aria-label="Halaman berikutnya">›</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---- Form & konfirmasi untuk fitur CRUD admin ----
 
 const RECORD_FIELDS = [
@@ -1290,6 +1391,7 @@ function ConfirmModal({ title, message, onConfirm, onClose }) {
 function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId, canManage = true }) {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const paging = useTablePaging(users, { resetKey: 'users' })
 
   const fields = editing === 'new'
     ? USER_FIELDS.map(field => field.key === 'password'
@@ -1329,7 +1431,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId, canMana
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {users.map(user => (
+              {paging.pageItems.map(user => (
                 <tr key={user.id} className="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
                   <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <div className="font-semibold text-slate-800 dark:text-slate-200">{user.nama || '-'}</div>
@@ -1365,6 +1467,7 @@ function UsersPage({ users, onCreate, onUpdate, onDelete, currentUserId, canMana
           </table>
         </div>
       ) : <div className="px-6 py-12 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada pengguna.</div>}
+      <TablePaging paging={paging} />
     </Panel>
 
     {editing && canManage && (
@@ -1623,9 +1726,9 @@ function Dashboard({ requests, adminName, onGoTo }) {
       <Panel title="Request terbaru" subtitle="Permintaan kunjungan yang baru masuk" action={<button onClick={() => onGoTo('request')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Lihat semua <ArrowUpRight className="ml-1 inline" size={15} /></button>}>
         <RequestTable items={requests.slice(0, 4)} />
       </Panel>
-      <Panel title="Kunjungan mendatang" subtitle="Jadwal kunjungan yang telah disetujui">
+      <Panel title="Kunjungan mendatang" subtitle="Jadwal kunjungan yang telah disetujui" action={upcoming.length > 5 ? <button onClick={() => onGoTo('tamu')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">Lihat semua <ArrowUpRight className="ml-1 inline" size={15} /></button> : undefined}>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {upcoming.length ? upcoming.map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
+          {upcoming.length ? upcoming.slice(0, 5).map(item => <div key={item.id} className="flex items-start gap-3 px-5 py-4">
             <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><CalendarDays size={19} /></div>
             <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800 dark:text-slate-200">{item.name}</p><p className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Mail size={13} className="shrink-0" /><span className="truncate">{item.email || '-'}</span></p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.purpose}</p><p className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"><Clock3 size={13} /> {formatDate(item.date)} · {item.time || '-'}</p></div>
           </div>) : <p className="px-5 py-10 text-center text-sm text-slate-400 dark:text-slate-500">Belum ada jadwal mendatang.</p>}
@@ -1660,6 +1763,10 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
         return sortOrder === 'Terlama' ? diff : -diff
       })
   const contactedCount = byStatus.filter(item => item.contacted).length
+  const paging = useTablePaging(items, {
+    resetKey: `${type}|${query}|${filter}|${contactFilter}|${tamuView}|${sortOrder}`,
+    highlightId,
+  })
 
   function selectView(next) {
     setTamuView(next)
@@ -1731,7 +1838,7 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
           : `${items.length} data · ${contactedCount} sudah dihubungi · ${byStatus.length - contactedCount} belum dihubungi`}
     >
       <RequestTable
-        items={items}
+        items={paging.pageItems}
         showActions={isPending}
         showContact={!isPending && view === 'semua'}
         onUpdateStatus={onUpdateStatus}
@@ -1742,6 +1849,7 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
         onDelete={canCrud ? item => setDeleting(item) : undefined}
         highlightId={highlightId}
       />
+      <TablePaging paging={paging} />
     </Panel>
 
     {editing && (
@@ -1795,6 +1903,10 @@ function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, f
     })
   const completed = items.filter(item => item.status === 'Selesai').length
   const exportTitle = (title || 'Riwayat Kunjungan').replace(/\s*\(.*\)$/, '').trim()
+  const paging = useTablePaging(items, {
+    resetKey: `${query}|${filter}`,
+    highlightId,
+  })
 
   useEffect(() => {
     if (!exportOpen) return undefined
@@ -1863,12 +1975,13 @@ function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, f
     </div>
     <Panel title="Riwayat request" subtitle={`${items.length} data · ${completed} kunjungan selesai · ${items.length - completed} ditolak`}>
       <RequestTable
-        items={items}
+        items={paging.pageItems}
         showCrud={canEdit}
         onEdit={canEdit ? item => setEditing(item) : undefined}
         onDelete={canEdit ? item => setDeleting(item) : undefined}
         highlightId={highlightId}
       />
+      <TablePaging paging={paging} />
     </Panel>
 
     {editing && (
@@ -1916,6 +2029,7 @@ function UpcomingVisitsPage({ visibleRequests, query, onQueryChange, filter, onF
     .slice()
     .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
   const pending = items.filter(item => item.status === 'Pending').length
+  const paging = useTablePaging(items, { resetKey: `${query}|${filter}` })
   return <>
     <div className="mb-6">
       <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Kunjungan Mendatang</h2>
@@ -1925,7 +2039,8 @@ function UpcomingVisitsPage({ visibleRequests, query, onQueryChange, filter, onF
       <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Pending', 'Diterima']} />
     </div>
     <Panel title="Jadwal kunjungan" subtitle={`${items.length} tamu · ${pending} menunggu persetujuan`}>
-      <RequestTable items={items} showContact />
+      <RequestTable items={paging.pageItems} showContact />
+      <TablePaging paging={paging} />
     </Panel>
   </>
 }
@@ -1936,6 +2051,7 @@ function CurrentVisitsPage({ visibleRequests, query, onQueryChange, filter, onFi
     .filter(item => item.status === 'Diterima')
     .slice()
     .sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`))
+  const paging = useTablePaging(items, { resetKey: `${query}|${filter}` })
   return <>
     <div className="mb-6">
       <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Kunjungan Terkini</h2>
@@ -1945,7 +2061,8 @@ function CurrentVisitsPage({ visibleRequests, query, onQueryChange, filter, onFi
       <SearchFilter query={query} onQueryChange={onQueryChange} filter={filter} onFilterChange={onFilterChange} statusOptions={['Semua', 'Diterima']} />
     </div>
     <Panel title="Kunjungan aktif" subtitle={`${items.length} tamu sedang berkunjung`}>
-      <RequestTable items={items} showContact />
+      <RequestTable items={paging.pageItems} showContact />
+      <TablePaging paging={paging} />
     </Panel>
   </>
 }
@@ -2172,14 +2289,16 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
         const code = `REQ-${String(row.id).padStart(3, '0')}`
         const label = `${code} · ${row.nama || '-'} · ${row.tujuan || '-'}`
         if (!previous.has(row.id)) {
-          alerts.push({
-            key: `new-${row.id}-${Date.now()}`,
-            title: 'Permintaan kunjungan baru',
-            body: label,
-            status: 'Pending',
-            requestId: code,
-          })
-        } else if (previous.get(row.id) !== row.status) {
+          if (canNotifyStatus(features, 'Pending')) {
+            alerts.push({
+              key: `new-${row.id}-${Date.now()}`,
+              title: 'Permintaan kunjungan baru',
+              body: label,
+              status: 'Pending',
+              requestId: code,
+            })
+          }
+        } else if (previous.get(row.id) !== row.status && canNotifyStatus(features, row.status)) {
           alerts.push({
             key: `status-${row.id}-${row.status}-${Date.now()}`,
             title: titles[row.status] || 'Status kunjungan berubah',
@@ -2316,7 +2435,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     fetchData()
     if (features.includes('kelola_akun') || features.includes('tambah_edit_akun')) fetchUsers()
     api.me().then(({ admin: sessionAdmin }) => setCurrentUserId(sessionAdmin?.userId || '')).catch(() => {})
-    getPushStatus().then(setPushStatus).catch(() => {})
+    if (canReceiveNotifications(features)) getPushStatus().then(setPushStatus).catch(() => {})
 
     // Berlangganan perubahan real-time dari database.
     // Otomatis refresh + notifikasi in-app saat ada request baru / status berubah.
@@ -2531,26 +2650,28 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={togglePush}
-              disabled={pushBusy || !pushStatus.supported}
-              title={!pushStatus.supported
-                ? 'Notifikasi browser hanya tersedia lewat HTTPS atau localhost'
-                : pushStatus.subscribed
-                  ? 'Matikan notifikasi browser di perangkat ini'
-                  : 'Aktifkan notifikasi browser di perangkat ini'}
-              aria-label={pushStatus.subscribed ? 'Matikan notifikasi' : 'Aktifkan notifikasi'}
-              className={`grid h-10 w-10 place-items-center rounded-full border shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                pushStatus.subscribed
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300'
-                  : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
-              }`}
-            >
-              {pushBusy
-                ? <Loader2 size={18} className="animate-spin" />
-                : pushStatus.subscribed ? <Bell size={18} /> : <BellOff size={18} />}
-            </button>
+            {canReceiveNotifications(features) && (
+              <button
+                type="button"
+                onClick={togglePush}
+                disabled={pushBusy || !pushStatus.supported}
+                title={!pushStatus.supported
+                  ? 'Notifikasi browser hanya tersedia lewat HTTPS atau localhost'
+                  : pushStatus.subscribed
+                    ? 'Matikan notifikasi browser di perangkat ini'
+                    : 'Aktifkan notifikasi browser di perangkat ini'}
+                aria-label={pushStatus.subscribed ? 'Matikan notifikasi' : 'Aktifkan notifikasi'}
+                className={`grid h-10 w-10 place-items-center rounded-full border shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  pushStatus.subscribed
+                    ? 'border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300'
+                    : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+                }`}
+              >
+                {pushBusy
+                  ? <Loader2 size={18} className="animate-spin" />
+                  : pushStatus.subscribed ? <Bell size={18} /> : <BellOff size={18} />}
+              </button>
+            )}
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{adminName || 'Administrator'}</p><p className="text-[11px] text-slate-400 dark:text-slate-500">{ROLE_LABELS[role] || role}</p></div>
             <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"><UserRound size={19} /></div>
