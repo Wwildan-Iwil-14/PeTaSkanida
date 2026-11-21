@@ -40,7 +40,12 @@ export function createApp() {
     }),
   )
 
-  app.use(express.json({ limit: '100kb' }))
+  // Import backup bisa berisi ribuan baris, jadi dilewatkan dari batas 100kb
+  // global lalu diparse sendiri oleh route dengan batas lebih besar.
+  app.use(express.json({
+    limit: '100kb',
+    type: req => !/\/admin\/database\/import(?:\?|$)/.test(req.url),
+  }))
 
   // Halaman info sederhana saat backend dibuka langsung di browser.
   app.get('/', (req, res) => {

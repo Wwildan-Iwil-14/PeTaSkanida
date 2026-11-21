@@ -86,6 +86,7 @@ Ketiganya harus berjalan supaya aplikasi berfungsi.
 8. **Kelola akun** — super admin bisa menambah/edit/hapus admin & petugas dengan pembagian fitur (role).
 9. **Real-time + cadangan** — data diperbarui otomatis; bila koneksi realtime terputus, ada polling sebagai cadangan.
 10. **Tampilan responsif** — nyaman dipakai di HP, tablet, maupun laptop.
+11. **Kelola database (super admin)** — menu **Database** menyediakan statistik tabel, **ekspor** Backup JSON / CSV per tabel, **impor** data dari JSON/CSV langsung di dashboard (tanpa membuka Supabase), dan pembersihan log scan lama. Saat impor, ID baru dibuat otomatis oleh database dan relasi antartabel tetap dipetakan; opsi "lewati data yang sudah ada" mencegah duplikat. Akun pengguna tidak ikut diimpor karena terhubung ke Supabase Auth.
 
 ---
 

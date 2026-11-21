@@ -301,6 +301,16 @@ export const api = {
 
   databaseBackup: () => authedRequest('/admin/database/backup', { token: currentToken() }),
 
+  databaseExportCsv: table =>
+    authedRequest(`/admin/database/export/csv?table=${encodeURIComponent(table)}`, { token: currentToken() }),
+
+  databaseImport: ({ data, dedupe = true }) =>
+    authedRequest('/admin/database/import', {
+      method: 'POST',
+      body: { data, dedupe },
+      token: currentToken(),
+    }),
+
   cleanScanLogs: days =>
     authedRequest('/admin/database/scan-logs/clean', {
       method: 'POST',
