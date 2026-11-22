@@ -39,3 +39,6 @@ supabase/.env.keys
 
 # Salinan migration hasil generate (sumber: database/migrations)
 backend/supabase/migrations
+
+# Vercel CLI (file .env.local sudah tercakup aturan Environment variables di atas)
+.vercel
