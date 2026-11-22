@@ -43,11 +43,20 @@ export function createApp() {
     }),
   )
 
+  // Hanya parse body application/json. Request multipart/form-data (surat
+  // tugas) harus diteruskan ke middleware multer di route — kalau ikut
+  // diparse di sini, boundary "----------" akan dibaca sebagai JSON dan
+  // menghasilkan error "Unexpected token '-'".
+  //
   // Import backup bisa berisi ribuan baris, jadi dilewatkan dari batas 100kb
-  // global lalu diparse sendiri oleh route dengan batas lebih besar.
+  // global lalu diparse sendiri oleh route dengan batas lebih besar (10mb).
+  const isJsonBody = req =>
+    /^application\/(?:[\w.+-]+\+)?json\b/i.test(String(req.headers?.['content-type'] || ''))
+
   app.use(express.json({
     limit: '100kb',
-    type: req => !/\/admin\/database\/import(?:\?|$)/.test(req.url),
+    type: req =>
+      isJsonBody(req) && !/\/admin\/database\/import(?:\?|$)/.test(req.url),
   }))
 
   // Halaman info sederhana saat backend dibuka langsung di browser.

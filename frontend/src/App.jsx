@@ -806,6 +806,7 @@ function GuestFormPage({ onBack, onSubmit, theme, onToggleTheme }) {
                       onKeyDown={e => {
                         if (e.key === 'Enter') {
                           e.preventDefault()
+                          if (e.isComposing || e.keyCode === 229) return
                           addCustomTujuan()
                         }
                       }}
@@ -1250,7 +1251,7 @@ function FormModal({ title, subtitle, fields, initial = {}, onSave, onClose }) {
             </div>
           ))}
 
-          {error && <p className="sm:col-span-2 rounded-xl bg-rose-50 px-3 py-2 text-[12px] font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
+          {error && <p role="alert" className="sm:col-span-2 rounded-xl bg-rose-50 px-3 py-2 text-[12px] font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
 
           <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Batal</button>
@@ -1654,7 +1655,7 @@ function Dashboard({ requests, adminName, onGoTo }) {
   </>
 }
 
-function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange, onCreate, onUpdate, onDelete, highlightId = '' }) {
+function ListingPage({ type, title, subtitle, canCrud = true, canCreate = canCrud, visibleRequests, query, onQueryChange, filter, onFilterChange, contactFilter, onContactFilterChange, onUpdateStatus, onToggleContacted, onComplete, sortOrder, onSortOrderChange, onCreate, onUpdate, onDelete, highlightId = '' }) {
   const isPending = type === 'request'
   const [tamuView, setTamuView] = useState('semua')
   const [editing, setEditing] = useState(null)
@@ -1673,7 +1674,7 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
     : byStatus.filter(item => view !== 'semua' || contactFilter === 'Semua' || (contactFilter === 'Sudah' ? item.contacted : !item.contacted))
   const items = sortOrder === undefined
     ? filtered
-    : filtered.slice().sort((a, b) => {
+    : filtered.toSorted((a, b) => {
         const toValue = item => new Date(`${item.date || ''}T${item.time || '00:00'}`).getTime() || 0
         const diff = toValue(a) - toValue(b)
         return sortOrder === 'Terlama' ? diff : -diff
@@ -1695,7 +1696,7 @@ function ListingPage({ type, title, subtitle, canCrud = true, visibleRequests, q
         <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title || (isPending ? 'Daftar Request' : 'Kelola Tamu')}</h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{subtitle || (isPending ? 'Periksa permintaan dan tentukan persetujuan kunjungan.' : 'Daftar tamu yang telah disetujui atau ditolak. Klik Selesai untuk memindahkan tamu ke Riwayat Kunjungan.')}</p>
       </div>
-      {!isPending && canCrud && (
+      {!isPending && canCreate && (
         <button type="button" onClick={() => setEditing('new')} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-600">
           <UserPlus size={15} /> Tambah Tamu
         </button>
@@ -1812,8 +1813,7 @@ function HistoryPage({ title, subtitle, visibleRequests, query, onQueryChange, f
   const exportRef = useRef(null)
   const items = visibleRequests
     .filter(item => item.status === 'Selesai' || item.status === 'Ditolak')
-    .slice()
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const toValue = ({ date, time }) => new Date(`${date}T${time || '00:00'}`).getTime()
       return toValue(b) - toValue(a)
     })
@@ -1942,8 +1942,7 @@ function UpcomingVisitsPage({ visibleRequests, query, onQueryChange, filter, onF
   const today = getTodayISO()
   const items = visibleRequests
     .filter(item => (item.status === 'Pending' || item.status === 'Diterima') && item.date >= today)
-    .slice()
-    .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
+    .toSorted((a, b) => new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`))
   const pending = items.filter(item => item.status === 'Pending').length
   const paging = useTablePaging(items, { resetKey: `${query}|${filter}` })
   return <>
@@ -1965,8 +1964,7 @@ function UpcomingVisitsPage({ visibleRequests, query, onQueryChange, filter, onF
 function CurrentVisitsPage({ visibleRequests, query, onQueryChange, filter, onFilterChange }) {
   const items = visibleRequests
     .filter(item => item.status === 'Diterima')
-    .slice()
-    .sort((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`))
+    .toSorted((a, b) => new Date(`${b.date}T${b.time || '00:00'}`) - new Date(`${a.date}T${a.time || '00:00'}`))
   const paging = useTablePaging(items, { resetKey: `${query}|${filter}` })
   return <>
     <div className="mb-6">
@@ -2636,7 +2634,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
       if (!fresh.length) return
 
       notifySound(fresh[fresh.length - 1].hasil)
-      setScanAlerts(current => [...[...fresh].reverse(), ...current].slice(0, 4))
+      setScanAlerts(current => [...fresh.toReversed(), ...current].slice(0, 4))
       fresh.forEach(row => window.setTimeout(() => dismissScanAlert(row.id), 12000))
     } catch (err) {
       console.error('[frontend] Gagal memuat scan:', err)
@@ -2960,8 +2958,9 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                 <ListingPage
                   type="tamu"
                   title="Kelola Tamu (admin)"
-                  subtitle="Daftar tamu yang telah disetujui atau ditolak khusus admin (tanpa aksi edit dan hapus)."
+                  subtitle="Daftar tamu yang telah disetujui atau ditolak khusus admin. Tambah tamu tersedia; aksi edit dan hapus tidak tersedia."
                   canCrud={false}
+                  canCreate={true}
                   highlightId={highlightId}
                   visibleRequests={visibleRequests}
                   query={query}
@@ -2973,6 +2972,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
                   onUpdateStatus={updateStatus}
                   onToggleContacted={toggleContacted}
                   onComplete={completeVisit}
+                  onCreate={createGuest}
                 />
               )}
               {active === 'request' && features.includes('request') && (
@@ -3144,6 +3144,7 @@ function App() {
     const root = document.documentElement
     root.classList.add('theme-transition')
     root.classList.toggle('dark', theme === 'dark')
+    document.querySelector('meta[name="color-scheme"]').content = theme
     try {
       window.localStorage.setItem(THEME_KEY, theme)
     } catch {

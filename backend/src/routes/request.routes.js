@@ -144,7 +144,7 @@ router.post(
 router.post(
   '/admin',
   requireAdmin,
-  requireFeature('tamu_superadmin', 'tamu'),
+  requireFeature('tamu_superadmin', 'tamu_admin', 'tamu'),
   asyncHandler(async (req, res) => {
     const { payload, errors } = validateRequestPayload(req.body)
     if (errors.length > 0) throw httpError(422, errors.join(' '))

@@ -28,6 +28,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Agent-local operational material (see AGENTS.md — do not commit)
+.agents/
+.sober/
+
 # Supabase
 supabase/.branches
 supabase/.temp
