@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------------------
+# Disalin ke frontend/dist saat `npm run build`.
+# Berlaku hanya jika hasil build di-hosting di web server APACHE.
+# Di Vercel file ini diabaikan (lihat penjelasan di .htaccess root).
+# ---------------------------------------------------------------------------
+
+Options -Indexes
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "^\.(env|git|vercel|htaccess|htpasswd|npmrc)">
+    Require all denied
+  </FilesMatch>
+  <FilesMatch "\.(bak|old|orig|save|sql|sqlite|sqlite3|log|tmp|swp)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+  <FilesMatch "^\.(env|git|vercel|htaccess|htpasswd|npmrc)">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+  <FilesMatch "\.(bak|old|orig|save|sql|sqlite|sqlite3|log|tmp|swp)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>

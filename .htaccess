@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------------------
+# PeTa SKANIDA — pengunci file sensitif (khusus web server APACHE)
+#
+# PENTING: file ini TIDAK berpengaruh di Vercel. Vercel memakai edge/Nginx,
+# bukan Apache. Di Vercel, rahasia seharusnya disimpan sebagai Environment
+# Variables di dashboard (Project Settings -> Environment Variables),
+# bukan dalam file .env yang ikut ter-deploy.
+#
+# File ini hanya berguna jika folder projek/dist di-hosting di Apache.
+# ---------------------------------------------------------------------------
+
+# Matikan daftar isi direktori.
+Options -Indexes
+
+# Tolak akses langsung ke dotfile sensitif.
+# Termasuk .env, .env.local, .git, .vercel, .sober, .agents,
+# serta file template .env.example (tidak perlu dibuka publik).
+<IfModule mod_authz_core.c>
+  <FilesMatch "^\.(env|git|vercel|sober|agents|htaccess|htpasswd|npmrc)">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+  <FilesMatch "^\.(env|git|vercel|sober|agents|htaccess|htpasswd|npmrc)">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>
+
+# Tolak file cadangan / dump database / log yang sering tertinggal.
+<IfModule mod_authz_core.c>
+  <FilesMatch "\.(bak|old|orig|save|sql|sqlite|sqlite3|log|tmp|swp)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+  <FilesMatch "\.(bak|old|orig|save|sql|sqlite|sqlite3|log|tmp|swp)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>

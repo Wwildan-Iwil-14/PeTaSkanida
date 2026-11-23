@@ -77,17 +77,26 @@ pengamanan harus diaktifkan lewat konfigurasi layanan.
    - `CORS_ORIGIN` → isi **origin eksplisit**, jangan `*`
    - `PUSH_FRONTEND_URL=https://petaskanida.vercel.app`
 
-2. **Rotasi token** yang pernah ditempel di chat / terminal. Hapus token lama
+   Variabel `VITE_*` ikut ter-bundle ke JavaScript browser — **jangan pernah**
+   memasukkan service role key atau rahasia lain ke sana.
+
+2. **`.htaccess` tidak berlaku di Vercel.** Vercel memakai edge/Nginx, bukan
+   Apache. File `.htaccess` di root dan di `frontend/public/` hanya berguna
+   jika hasil build di-hosting di Apache. Proteksi utama di Vercel adalah
+   Environment Variables di dashboard + aturan `.gitignore` yang menjaga
+   file `.env` tidak pernah masuk git.
+
+3. **Rotasi token** yang pernah ditempel di chat / terminal. Hapus token lama
    di `Settings → Tokens`.
 
-3. **Batasi akses deployment**: aktifkan Deployment Protection / password
+4. **Batasi akses deployment**: aktifkan Deployment Protection / password
    untuk preview bila project masih dalam pengujian.
 
-4. **Aktifkan rate limiting / WAF** di Vercel untuk `/api/auth/*` dan
+5. **Aktifkan rate limiting / WAF** di Vercel untuk `/api/auth/*` dan
    `/api/requests/*`. Rate limiter bawaan backend berbasis memori tidak
    efektif pada serverless multi-instance.
 
-5. **Pantau log** `Functions → Logs`. Perhatikan `401/403` berulang dan
+6. **Pantau log** `Functions → Logs`. Perhatikan `401/403` berulang dan
    pesan `[push]` / `[backend]`.
 
 ---
