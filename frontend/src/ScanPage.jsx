@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import {
   ScanLine, Camera, CameraOff, Loader2, CheckCircle2, XCircle, Hourglass,
   BadgeCheck, AlertTriangle, Keyboard, Smartphone, Users, Clock3, X, Bell,
@@ -10,6 +9,21 @@ import { useTablePaging, TablePaging } from './lib/pagination'
 
 const CARD = 'rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
 const READER_ID = 'peta-qr-reader'
+
+// Library pemindai QR (~100 KB) dimuat hanya saat fitur Scan dipakai,
+// sehingga tidak membengkakkan bundle awal admin.
+let Html5Qrcode = null
+let Html5QrcodeSupportedFormats = null
+let qrLibraryPromise = null
+function loadQrLibrary() {
+  if (!qrLibraryPromise) {
+    qrLibraryPromise = import('html5-qrcode').then(module => {
+      Html5Qrcode = module.Html5Qrcode
+      Html5QrcodeSupportedFormats = module.Html5QrcodeSupportedFormats
+    })
+  }
+  return qrLibraryPromise
+}
 
 // ID perangkat per tab: dikirim saat scan agar HP pemindai tidak ikut
 // menerima notifikasi dari scan-nya sendiri.
@@ -216,6 +230,7 @@ function CameraScanner({ onDecoded, disabled, soundEnabled = true, onToggleSound
     let mounted = true
     async function loadCameras() {
       try {
+        await loadQrLibrary()
         const cameras = await Html5Qrcode.getCameras()
         if (mounted && Array.isArray(cameras) && cameras.length > 0) {
           setCameraList(cameras)
@@ -292,6 +307,7 @@ function CameraScanner({ onDecoded, disabled, soundEnabled = true, onToggleSound
         try { scannerRef.current.clear() } catch {}
       }
 
+      await loadQrLibrary()
       const scanner = new Html5Qrcode(READER_ID, {
         verbose: false,
         formatsToSupport: [
