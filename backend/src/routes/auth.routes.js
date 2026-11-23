@@ -5,7 +5,7 @@ import { httpError } from '../lib/httpError.js'
 import { getAdminProfile } from '../lib/admins.js'
 import { resolveFeatures } from '../lib/features.js'
 import { validateCredentials } from '../lib/validate.js'
-import { requireAdmin, readBearer } from '../middleware/auth.js'
+import { requireAdmin, readBearer, clearAdminCache } from '../middleware/auth.js'
 import { createRateLimiter } from '../middleware/rateLimit.js'
 
 const router = Router()
@@ -89,6 +89,9 @@ router.post(
   asyncHandler(async (req, res) => {
     const bearer = readBearer(req)
     const refreshToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : ''
+
+    // Cabut cache sesi agar token ini tidak lagi dipakai setelah logout.
+    clearAdminCache(bearer)
 
     try {
       // Pakai refresh token bila ada (access token mungkin sudah kedaluwarsa).

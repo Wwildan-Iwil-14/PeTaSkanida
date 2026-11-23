@@ -115,6 +115,14 @@ pengamanan harus diaktifkan lewat konfigurasi layanan.
   `Content-Security-Policy` lewat `vercel.json` dengan `script-src 'self'
   'unsafe-inline'` lalu uji menyeluruh sebelum produksi.
 - **Rate limiter memori** tidak bersama antar instance serverless.
+- **Cache profil admin 10 detik.** `requireAdmin` menyimpan hasil verifikasi
+  token selama maksimal 10 detik di memori instance untuk mengurangi latency.
+  Token yang dicabut bisa masih diterima paling lama 10 detik pada instance
+  yang sama; logout sudah menghapus cache secara eksplisit.
+- **Push dikirim di latar belakang.** Notifikasi tidak lagi meng-blok response,
+  tetapi pada serverless pengiriman background tidak dijamin selesai bila
+  function langsung di-freeze setelah response. Ini trade-off yang disengaja
+  demi tombol yang responsif.
 
 ---
 

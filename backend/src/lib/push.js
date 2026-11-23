@@ -93,7 +93,11 @@ async function eligibleSubscriptions(requiredFeatures) {
  * Kirim satu notifikasi ke perangkat yang berhak menerimanya.
  * Tidak pernah melempar error: kegagalan push tidak boleh mengganggu request.
  */
-export async function sendPush({ title, body, tag = 'peta-skanida', requiredFeatures = [] }) {
+// Batas waktu pengiriman push. FCM bisa lambat atau menggantung; request
+// admin tidak boleh menunggu selama itu.
+const PUSH_TIMEOUT_MS = 2500
+
+async function sendPushCore({ title, body, tag = 'peta-skanida', requiredFeatures = [] }) {
   if (!isPushEnabled() || !setupVapid()) {
     console.warn('[push] VAPID key belum diisi; notifikasi browser dilewati.')
     return { skipped: true }
@@ -136,6 +140,22 @@ export async function sendPush({ title, body, tag = 'peta-skanida', requiredFeat
 
   console.log(`[push] "${title}": terkirim ke ${sent}/${rows.length} perangkat.`)
   return { sent, total: rows.length }
+}
+
+/**
+ * Pembungkus sendPush: tidak pernah melempar error dan dibatasi waktunya.
+ * Aman dipanggil tanpa `await` dari route — response API langsung dikirim.
+ */
+export function sendPush(options) {
+  let timer = null
+  const work = sendPushCore(options).catch(err => {
+    console.warn('[push] Dilewati karena error:', err?.message || err)
+    return { skipped: true }
+  })
+  const timeout = new Promise(resolve => {
+    timer = setTimeout(() => resolve({ skipped: true, timeout: true }), PUSH_TIMEOUT_MS)
+  })
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer))
 }
 
 export async function notifyNewRequest(request = {}) {

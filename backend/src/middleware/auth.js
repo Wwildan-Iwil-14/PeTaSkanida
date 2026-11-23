@@ -11,6 +11,33 @@ export function readBearer(req) {
 
 const SESSAI_INVALID = 'Sesi admin tidak valid atau sudah berakhir. Silakan login kembali.'
 
+// Cache profil per access token supaya setiap request tidak perlu dua
+// network call ke Supabase (getUser + getAdminProfile). Token baru = kunci
+// baru, dan cache dibatasi/usang sebentar agar pencabutan sesi tetap cepat.
+const ADMIN_CACHE_TTL_MS = 10_000
+const ADMIN_CACHE_MAX = 500
+const adminCache = new Map()
+
+function cachedAdmin(token) {
+  const hit = adminCache.get(token)
+  if (!hit) return null
+  if (Date.now() >= hit.expires) {
+    adminCache.delete(token)
+    return null
+  }
+  return hit.admin
+}
+
+function rememberAdmin(token, admin) {
+  if (adminCache.size >= ADMIN_CACHE_MAX) adminCache.clear()
+  adminCache.set(token, { admin, expires: Date.now() + ADMIN_CACHE_TTL_MS })
+}
+
+/** Hapus cache saat sesi dicabut (logout / ganti password). */
+export function clearAdminCache(token) {
+  if (token) adminCache.delete(token)
+}
+
 /**
  * Wajib login admin (Authorization: Bearer <JWT Supabase Auth>).
  *
@@ -23,6 +50,12 @@ export async function requireAdmin(req, res, next) {
     const token = readBearer(req)
     if (!token) return next(httpError(401, SESSAI_INVALID))
 
+    const cached = cachedAdmin(token)
+    if (cached) {
+      req.admin = cached
+      return next()
+    }
+
     const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return next(httpError(401, SESSAI_INVALID))
 
@@ -31,7 +64,7 @@ export async function requireAdmin(req, res, next) {
       return next(httpError(403, 'Akun ini bukan admin terdaftar. Hubungi pengelola sistem.'))
     }
 
-    req.admin = {
+    const admin = {
       userId: data.user.id,
       profileId: profile.id,
       email: data.user.email,
@@ -39,6 +72,8 @@ export async function requireAdmin(req, res, next) {
       role: profile.role,
       features: resolveFeatures(profile.role, profile.features),
     }
+    rememberAdmin(token, admin)
+    req.admin = admin
     next()
   } catch (err) {
     next(err)

@@ -53,6 +53,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   const knownRequestsRef = useRef(null)
   const requestsSignatureRef = useRef(null)
   const highlightTimerRef = useRef(null)
+  const fetchingRef = useRef(false)
 
   function showNotice(message, duration = 3200) {
     setNotice(message)
@@ -151,6 +152,10 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
 
   // Ambil semua data request dari backend
   async function fetchData({ announce = false } = {}) {
+    // Polling dan aksi bisa bersamaan — hindari request ganda yang hanya
+    // menambah beban server tanpa mengubah data.
+    if (fetchingRef.current) return
+    fetchingRef.current = true
     // Spinner hanya pada pemuatan pertama. Muat ulang realtime berikutnya
     // berjalan di latar belakang agar kamera scanner tidak ikut terputus.
     if (!loadedOnceRef.current) setLoading(true)
@@ -172,6 +177,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     } catch (err) {
       setError('Gagal memuat data: ' + (err.message || 'Terjadi kesalahan'))
     } finally {
+      fetchingRef.current = false
       setLoading(false)
     }
   }
@@ -283,6 +289,9 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     const target = requests.find(item => item.id === id)
     if (!target) return
 
+    // Optimistik: ubah baris lebih dulu supaya tombol terasa instan, tanpa
+    // menunggu request + fetch ulang. Rollback bila server menolak.
+    setRequests(current => current.map(item => item.id === id ? { ...item, status } : item))
     try {
       if (status === 'Diterima') {
         await api.approveRequest(target.dbId)
@@ -292,10 +301,11 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
 
       setNotice(`Request ${target.id} berhasil ${status === 'Diterima' ? 'disetujui' : 'ditolak'}.`)
       window.setTimeout(() => setNotice(''), 3000)
-      fetchData()
     } catch (err) {
+      setRequests(current => current.map(item => item.id === id ? { ...item, status: target.status } : item))
       setNotice('Gagal memperbarui status: ' + (err.message || 'Terjadi kesalahan'))
       window.setTimeout(() => setNotice(''), 4000)
+      fetchData()
     }
   }
 
@@ -355,51 +365,51 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
   // ---- CRUD pengguna ----
   async function createUser(values) {
     await api.createAdminUser(values)
-    await fetchUsers()
+    fetchUsers() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Pengguna baru berhasil ditambahkan.')
   }
   async function updateUser(id, values) {
     await api.updateAdminUser(id, values)
-    await fetchUsers()
+    fetchUsers() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Data pengguna berhasil diperbarui.')
   }
   async function removeUser(id) {
     await api.deleteAdminUser(id)
-    await fetchUsers()
+    fetchUsers() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Pengguna berhasil dihapus.')
   }
 
   // ---- CRUD tamu ----
   async function createGuest(values) {
     await api.createGuest(values)
-    await fetchData()
+    fetchData() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Tamu baru berhasil ditambahkan.')
   }
   async function updateGuest(id, values) {
     await api.updateRequest(id, values)
-    await fetchData()
+    fetchData() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Data tamu berhasil diperbarui.')
   }
   async function removeGuest(id) {
     await api.deleteRequest(id)
-    await fetchData()
+    fetchData() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Tamu berhasil dihapus.')
   }
 
   // ---- CRUD riwayat ----
   async function createHistory(values) {
     await api.createHistory(values)
-    await fetchData()
+    fetchData() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Riwayat baru berhasil ditambahkan.')
   }
   async function updateHistory(id, values) {
     await api.updateHistory(id, values)
-    await fetchData()
+    fetchData() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Riwayat berhasil diperbarui.')
   }
   async function removeHistory(id) {
     await api.deleteHistory(id)
-    await fetchData()
+    fetchData() // refresh di latar belakang, tidak menahan notifikasi
     showNotice('Riwayat berhasil dihapus.')
   }
 

@@ -110,7 +110,8 @@ router.post(
 
     // Notifikasi browser ke admin. Modul ini fail-soft: bila belum
     // dikonfigurasi / gagal, pendaftaran tamu tetap berhasil.
-    await notifyNewRequest({ ...payload, ...data })
+    // Notifikasi di latar belakang — jangan biarkan FCM menahan response.
+    notifyNewRequest({ ...payload, ...data })
 
     res.status(201).json({
       request: data,
@@ -236,7 +237,8 @@ router.post(
       throw httpError(502, `Gagal menyetujui request: ${accError.message}`)
     }
 
-    await notifyStatusChange(record, 'Diterima')
+    // Notifikasi di latar belakang — response dikirim segera.
+    notifyStatusChange(record, 'Diterima')
 
     res.json({ request: { ...record, status: 'Diterima' } })
   }),
@@ -264,7 +266,8 @@ router.post(
       throw httpError(502, `Gagal menyimpan riwayat: ${historyError.message}`)
     }
 
-    await notifyStatusChange(record, 'Ditolak')
+    // Notifikasi di latar belakang — response dikirim segera.
+    notifyStatusChange(record, 'Ditolak')
 
     res.json({ request: { ...record, status: 'Ditolak' } })
   }),
@@ -303,7 +306,8 @@ router.post(
     const { error: removeError } = await supabase.from('req_acc').delete().eq('id', id)
     if (removeError) throw httpError(502, `Gagal menyelesaikan kunjungan: ${removeError.message}`)
 
-    await notifyStatusChange(record, 'Selesai')
+    // Notifikasi di latar belakang — response dikirim segera.
+    notifyStatusChange(record, 'Selesai')
 
     res.json({ request: { ...record, status: 'Selesai' } })
   }),
