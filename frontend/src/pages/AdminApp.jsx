@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, Menu, X, CheckCircle2, ChevronRight, UserRound, ShieldCheck, CalendarCheck, Loader2, AlertCircle, Bell, BellOff } from 'lucide-react'
 import { api } from '../lib/api'
 import { enablePush, disablePush, getPushStatus } from '../lib/push'
@@ -16,6 +17,8 @@ import { UsersPage } from './UsersPage'
 const DatabasePage = lazy(() => import('./DatabasePage').then(m => ({ default: m.DatabasePage })))
 
 function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const adminName = admin?.nama || ''
   const role = admin?.role || 'admin'
   const features = resolveFeatures(role, admin?.features)
@@ -28,7 +31,12 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     ),
     [featureKey],
   )
-  const [active, setActive] = useState(() => allowedNav[0]?.id || 'akun')
+  // Tab aktif berasal dari URL, bukan state lokal, supaya Back/Forward
+  // browser dan refresh halaman tetap konsisten.
+  const pathSegment = location.pathname.replace(/^\/admin\/?/, '').split('/')[0]
+  const active = allowedNav.some(item => item.id === pathSegment)
+    ? pathSegment
+    : (allowedNav[0]?.id || 'akun')
   const [requests, setRequests] = useState([])
   const [users, setUsers] = useState([])
   const [currentUserId, setCurrentUserId] = useState('')
@@ -272,12 +280,13 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
     }
   }, [])
 
-  // Bila fitur akun berubah / menu tidak lagi diizinkan, pindah ke menu pertama.
+  // Pastikan URL selalu menunjuk ke menu yang diizinkan. Juga menangani
+  // /admin tanpa segmen dan deep link ke menu yang sudah tidak aktif.
   useEffect(() => {
-    if (!allowedNav.some(item => item.id === active)) {
-      setActive(allowedNav[0]?.id || 'akun')
+    if (!allowedNav.some(item => item.id === pathSegment)) {
+      navigate(`/admin/${allowedNav[0]?.id || 'akun'}`, { replace: true })
     }
-  }, [featureKey])
+  }, [featureKey, pathSegment])
 
   const visibleRequests = useMemo(() => requests.filter(item => {
     const matchesQuery = `${item.name} ${item.id} ${item.purpose}`.toLowerCase().includes(query.toLowerCase())
@@ -337,7 +346,7 @@ function AdminApp({ onLogout, admin, theme, onToggleTheme }) {
         ? 'riwayat-superadmin'
         : (features.includes('riwayat_admin') ? 'riwayat-admin' : 'riwayat-admin')
     }
-    setActive(targetId)
+    navigate(`/admin/${targetId}`)
     setQuery('')
     setFilter(status)
     setSortOrder('Terkini')

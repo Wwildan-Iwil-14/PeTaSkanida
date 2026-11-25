@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Loader2, Download, AlertTriangle, Camera } from 'lucide-react'
 import { api, saveSession, clearSession, loadToken } from './lib/api'
 import { downloadBarcode } from './lib/barcode'
@@ -10,6 +11,14 @@ import { AdminLoginPage } from './pages/AdminLoginPage'
 const GuestFormPage = lazy(() => import('./pages/GuestFormPage'))
 const GuestSuccessPage = lazy(() => import('./pages/GuestSuccessPage'))
 const AdminApp = lazy(() => import('./pages/AdminApp'))
+
+const PATHS = {
+  login: '/',
+  adminLogin: '/admin/login',
+  admin: '/admin',
+  guest: '/tamu',
+  guestSuccess: '/tamu/sukses',
+}
 
 function PageLoader() {
   return (
@@ -66,6 +75,8 @@ function LeaveWarningModal({ onDownload, onScreenshot, onClose }) {
 // bersama notifikasi scan QR dalam satu wadah di AdminApp.
 
 function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [role, setRole] = useState(null) // null = login, 'admin-login', 'admin', 'tamu', 'tamu-success'
   const [admin, setAdmin] = useState(null)
   const [restoring, setRestoring] = useState(true)
@@ -164,6 +175,11 @@ function App() {
         if (!active) return
         setAdmin(sessionAdmin)
         setRole('admin')
+        // Kalau dibuka dari halaman login, arahkan ke panel admin.
+        // Deep link seperti /admin/request tetap dipertahankan.
+        if (!location.pathname.startsWith('/admin')) {
+          navigate(PATHS.admin, { replace: true })
+        }
       })
       .catch(err => {
         // Jangan menghapus sesi untuk gangguan jaringan/server sementara.
@@ -178,10 +194,30 @@ function App() {
     }
   }, [])
 
+  // Selaraskan peran dengan URL, termasuk tombol Back/Forward browser.
+  useEffect(() => {
+    if (restoring) return
+    const path = location.pathname
+    if (path === PATHS.adminLogin) {
+      setRole('admin-login')
+    } else if (path.startsWith('/admin')) {
+      if (loadToken()) setRole('admin')
+      else navigate(PATHS.login, { replace: true })
+    } else if (path === PATHS.guest) {
+      setRole('tamu')
+    } else if (path === PATHS.guestSuccess) {
+      if (guestResult) setRole('tamu-success')
+      else navigate(PATHS.guest, { replace: true })
+    } else {
+      setRole(null)
+    }
+  }, [location.pathname, restoring])
+
   function handleLoginSuccess(result) {
     saveSession(result)
     setAdmin(result.admin)
     setRole('admin')
+    navigate(PATHS.admin)
   }
 
   function handleLogout() {
@@ -189,6 +225,7 @@ function App() {
     clearSession()
     setAdmin(null)
     setRole(null)
+    navigate(PATHS.login)
   }
 
   if (restoring) {
@@ -200,14 +237,24 @@ function App() {
     )
   }
 
-  if (role === null) return <LoginPage onSelect={setRole} theme={theme} onToggleTheme={toggleTheme} />
-  if (role === 'admin-login') return <AdminLoginPage onSuccess={handleLoginSuccess} onBack={() => setRole(null)} theme={theme} onToggleTheme={toggleTheme} />
+  if (role === null) return <LoginPage onSelect={next => {
+    setRole(next)
+    navigate(next === 'admin-login' ? PATHS.adminLogin : PATHS.guest)
+  }} theme={theme} onToggleTheme={toggleTheme} />
+  if (role === 'admin-login') return <AdminLoginPage onSuccess={handleLoginSuccess} onBack={() => {
+    setRole(null)
+    navigate(PATHS.login)
+  }} theme={theme} onToggleTheme={toggleTheme} />
 
   const page = role === 'tamu'
-    ? <GuestFormPage theme={theme} onToggleTheme={toggleTheme} onBack={() => setRole(null)} onSubmit={data => {
+    ? <GuestFormPage theme={theme} onToggleTheme={toggleTheme} onBack={() => {
+        setRole(null)
+        navigate(PATHS.login)
+      }} onSubmit={data => {
         setGuestResult(data)
         setBarcodeSaved(false)
         setRole('tamu-success')
+        navigate(PATHS.guestSuccess)
       }} />
     : role === 'tamu-success'
       ? <>
@@ -217,8 +264,8 @@ function App() {
             onToggleTheme={toggleTheme}
             saved={barcodeSaved}
             onDownloaded={() => setBarcodeSaved(true)}
-            onAgain={() => attemptLeave(() => { setGuestResult(null); setBarcodeSaved(false); setRole('tamu') })}
-            onBack={() => attemptLeave(() => { setGuestResult(null); setBarcodeSaved(false); setRole(null) })}
+            onAgain={() => attemptLeave(() => { setGuestResult(null); setBarcodeSaved(false); setRole('tamu'); navigate(PATHS.guest) })}
+            onBack={() => attemptLeave(() => { setGuestResult(null); setBarcodeSaved(false); setRole(null); navigate(PATHS.login) })}
           />
           {leaveModalOpen && <LeaveWarningModal
             onDownload={handleModalDownload}
